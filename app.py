@@ -12,7 +12,7 @@ st.set_page_config(
 # --- SIDEBAR ---
 with st.sidebar:
     st.image("deloitte_logo.png", width=200)
-    st.title("SubsidySmart™ Settings")
+    st.title("DeloitteSmart™ Settings")
     openai_api_key = st.text_input("🔑 Enter OpenAI API Key", type="password")
     st.markdown("---")
     st.markdown("Powered by [Innov8]")

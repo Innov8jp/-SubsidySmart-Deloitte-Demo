@@ -3,7 +3,7 @@ import openai
 
 # --- CONFIG ---
 st.set_page_config(
-    page_title="SubsidySmart™ - AI Assistant",
+    page_title="SubsidySmart™ - Deloitte AI Assistant",
     page_icon=":moneybag:",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -15,13 +15,13 @@ with st.sidebar:
     st.title("SubsidySmart™ Settings")
     openai_api_key = st.text_input("🔑 Enter OpenAI API Key", type="password")
     st.markdown("---")
-    st.markdown("Powered by [Your Company Name]")
+    st.markdown("Powered by [Innov8]")
     st.markdown("Prototype Version 1.0")
     st.markdown("Secure | Scalable | Smart")
 
 # --- MAIN PAGE ---
-st.title("SubsidySmart™: Your Government Subsidy AI Assistant")
-st.caption("Ask any business subsidy question and get instant expert advice, powered by AI and real government programs.")
+st.title("SubsidySmart™: Deloitte Subsidy AI Assistant")
+st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent and real government programs.")
 
 col1, col2 = st.columns([3, 1])
 
@@ -32,7 +32,7 @@ with col1:
     st.subheader("💬 Ask Your Question")
     user_question = st.text_input("Type your subsidy-related question here:", key="input")
 
-    if st.button("🚀 Ask SubsidySmart™"):
+    if st.button("🚀 Ask Deloitte Ai Agent™"):
         if not openai_api_key:
             st.error("Please enter your OpenAI API Key in the sidebar.")
         elif not user_question:
@@ -55,7 +55,8 @@ with col1:
             try:
                 with st.spinner("SubsidySmart™ is analyzing your question..."):
                     response = openai.ChatCompletion.create(
-                        model="gpt-4-turbo",
+                        model="gpt-3.5-turbo",
+
                         messages=[
                             {"role": "system", "content": "You are a professional and helpful government subsidy advisor."},
                             {"role": "user", "content": prompt}

@@ -3,7 +3,7 @@ import openai
 
 # --- CONFIG ---
 st.set_page_config(
-    page_title="SubsidySmart™ - Deloitte AI Assistant",
+    page_title="DeloitteSmart™ - AI Assistant",
     page_icon=":moneybag:",
     layout="wide",
     initial_sidebar_state="expanded"

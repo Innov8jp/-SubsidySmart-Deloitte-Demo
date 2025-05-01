@@ -91,12 +91,17 @@ with col1:
                 """
 
                 with st.spinner("SubsidySmart™ is preparing your interview questions..."):
-    response = openai.ChatCompletion.create(
+    response = openai.ChatCompletion.create(  # ✅ Indented correctly
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
             {"role": "user", "content": prompt}
         ]
+    )
+    consultant_questions = response['choices'][0]['message']['content']
+    st.markdown("### Suggested Interview Questions")
+    st.markdown(consultant_questions)
+
     )
     consultant_questions = response['choices'][0]['message']['content']
     st.markdown("### Suggested Interview Questions")

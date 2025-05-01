@@ -13,15 +13,16 @@ st.set_page_config(
 with st.sidebar:
     st.image("deloitte_logo.png", width=200)
     st.title("DeloitteSmart™ Settings")
-    openai_api_key = st.text_input("🔑 Enter OpenAI API Key", type="password")
-    st.markdown("---")
+    openai_api_key = "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")
+    st.markdown("✅ OpenAI API key is pre-configured.")
     st.markdown("Powered by [Innov8]")
     st.markdown("Prototype Version 1.0")
     st.markdown("Secure | Scalable | Smart")
 
 # --- MAIN PAGE ---
-st.title("SubsidySmart™: Deloitte Subsidy AI Assistant")
-st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent and real government programs.")
+st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
+st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
+st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")
 
 col1, col2 = st.columns([3, 1])
 
@@ -29,10 +30,10 @@ with col1:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.subheader("💬 Ask Your Question")
+    st.subheader("Ask Your Question")
     user_question = st.text_input("Type your subsidy-related question here:", key="input")
 
-    if st.button("🚀 Ask Deloitte Ai Agent™"):
+    if st.button("Ask Deloitte Ai Agent™"):
         if not openai_api_key:
             st.error("Please enter your OpenAI API Key in the sidebar.")
         elif not user_question:
@@ -71,20 +72,23 @@ with col1:
 
     if st.session_state.chat_history:
         st.markdown("---")
-        st.subheader("📜 Conversation History")
+        st.subheader("Conversation History")
         for chat in reversed(st.session_state.chat_history):
             with st.container():
                 st.markdown(f"**🧑 You:** {chat['question']}")
-                st.markdown(f"**🤖 SubsidySmart™:** {chat['answer']}")
+                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
                 st.markdown("---")
 
 with col2:
     st.subheader("ℹ️ Information")
     st.markdown("""
-    - ✅ SME, R&D, Export Programs  
-    - ✅ Real government program documents  
-    - ✅ Scalable to full production  
-    - ✅ Secure and modular
+    🧾 What This Assistant Can Do
+
+    - ✅ Answers questions about SME, R&D, and Export funding  
+    - ✅ Uses real, official government program documents  
+    - ✅ Built for future scaling — client portal, CRM, auto-drafts  
+    - ✅ Runs on a secure and flexible architecture
+
     """)
     st.subheader("📈 Roadmap")
     st.markdown("""

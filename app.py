@@ -78,6 +78,18 @@ with col1:
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="consult_input")
 
+        with st.expander("📝 Optional: Score this client"):
+            age = st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
+            industry = st.multiselect("Industry?", ["AI", "IoT", "Biotech", "Green Energy", "Other"])
+            rd_budget = st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
+            export_ready = st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
+            revenue = st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
+            employees = st.slider("Number of employees?", 1, 200, 10)
+            documents = st.multiselect(
+                "Documents provided",
+                ["Business Plan", "Org Chart", "Budget", "Export Plan", "Pitch Deck"]
+            )
+
         if st.button("Generate Consultant Questions"):
             if not openai_api_key:
                 st.error("API key missing")
@@ -105,6 +117,32 @@ with col1:
                     consultant_questions = response['choices'][0]['message']['content']
                     st.markdown("### Suggested Interview Questions")
                     st.markdown(consultant_questions)
+
+                    # === Scoring Logic ===
+                    score = 0
+                    if age == "≥ 3 years":
+                        score += 15
+                    if any(i in ["AI", "IoT", "Biotech", "Green Energy"] for i in industry):
+                        score += 20
+                    if rd_budget == "≥ $200K":
+                        score += 20
+                    if export_ready == "Yes":
+                        score += 15
+                    if revenue == "≥ $500K":
+                        score += 10
+                    if 5 <= employees <= 100:
+                        score += 10
+                    score += len(documents) * 2  # 2% per document
+
+                    st.markdown("### 🧮 Eligibility Score")
+                    st.metric("Score (%)", f"{score}%")
+
+                    if score >= 85:
+                        st.success("🟢 Highly Eligible")
+                    elif score >= 65:
+                        st.warning("🔏 Potentially Eligible — Requires Review")
+                    else:
+                        st.error("🔴 Low Eligibility or Incomplete")
 
     if st.session_state.chat_history:
         st.markdown("---")

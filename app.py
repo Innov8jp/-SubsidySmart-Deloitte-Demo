@@ -91,24 +91,27 @@ with col1:
                 """
 
                 with st.spinner("SubsidySmart™ is preparing your interview questions..."):
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
-                            {"role": "user", "content": prompt}
-                        ]
-                    )
-                    consultant_questions = response['choices'][0]['message']['content']
-                    st.markdown("### Suggested Interview Questions")
-                    st.markdown(consultant_questions)
-        if st.session_state.chat_history:
-        st.markdown("---")
-        st.subheader("Conversation History")
-        for chat in reversed(st.session_state.chat_history):
-            with st.container():
-                st.markdown(f"**🧑 You:** {chat['question']}")
-                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-                st.markdown("---")
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    consultant_questions = response['choices'][0]['message']['content']
+    st.markdown("### Suggested Interview Questions")
+    st.markdown(consultant_questions)
+
+# ✅ Fixed indentation for chat history section
+if st.session_state.chat_history:
+    st.markdown("---")
+    st.subheader("Conversation History")
+    for chat in reversed(st.session_state.chat_history):
+        with st.container():
+            st.markdown(f"**🧑 You:** {chat['question']}")
+            st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
+            st.markdown("---")
+
 
 with col2:
     st.subheader("ℹ️ Information")

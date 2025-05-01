@@ -13,7 +13,7 @@ st.set_page_config(
 with st.sidebar:
     st.image("deloitte_logo.png", width=200)
     st.title("DeloitteSmart™ Settings")
-    openai_api_key = "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")
+    openai_api_key = "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"
     st.markdown("✅ OpenAI API key is pre-configured.")
     st.markdown("Powered by [Innov8]")
     st.markdown("Prototype Version 1.0")

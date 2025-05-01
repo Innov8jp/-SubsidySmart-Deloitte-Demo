@@ -13,7 +13,7 @@ st.set_page_config(
 with st.sidebar:
     st.image("deloitte_logo.png", width=200)
     st.title("DeloitteSmart™ Settings")
-    openai_api_key = "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"
+    openai_api_key = st.secrets["OPENAI_API_KEY"]
     st.markdown("✅ OpenAI API key is pre-configured.")
     st.markdown("Powered by [Innov8]")
     st.markdown("Prototype Version 1.0")
@@ -41,7 +41,7 @@ with col1:
         else:
             openai.api_key = openai_api_key
             prompt = f"""
-            You are SubsidySmart™, an expert AI agent assisting Deloitte consultants and their clients in finding appropriate government subsidy programs based on their business situation.
+            You are DeloitteSmart™, an expert AI agent assisting Deloitte consultants and their clients in finding appropriate government subsidy programs based on their business situation.
 
             Context Documents:
             1. SME Business Expansion Grant 2025: Supports SMEs with up to 50% of project costs for new market expansion. (Eligibility: 5-100 employees, <$50M revenue)

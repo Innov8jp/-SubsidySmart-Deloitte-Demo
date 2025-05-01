@@ -1,6 +1,7 @@
 import streamlit as st
 import openai
 from datetime import datetime
+
 # --- CONFIG ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
@@ -23,9 +24,12 @@ with st.sidebar:
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
 st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")
-st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")  # line ~28
+
+# --- Mode Toggle ---
+mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
 
 col1, col2 = st.columns([3, 1])
+
 with col1:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
@@ -91,43 +95,35 @@ with col1:
                 """
 
                 with st.spinner("SubsidySmart™ is preparing your interview questions..."):
-    response = openai.ChatCompletion.create(  # ✅ Indented correctly
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    consultant_questions = response['choices'][0]['message']['content']
-    st.markdown("### Suggested Interview Questions")
-    st.markdown(consultant_questions)
+                    response = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    consultant_questions = response['choices'][0]['message']['content']
+                    st.markdown("### Suggested Interview Questions")
+                    st.markdown(consultant_questions)
 
-    )
-    consultant_questions = response['choices'][0]['message']['content']
-    st.markdown("### Suggested Interview Questions")
-    st.markdown(consultant_questions)
-
-# ✅ Fixed indentation for chat history section
-if st.session_state.chat_history:
-    st.markdown("---")
-    st.subheader("Conversation History")
-    for chat in reversed(st.session_state.chat_history):
-        with st.container():
-            st.markdown(f"**🧑 You:** {chat['question']}")
-            st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-            st.markdown("---")
-
+    if st.session_state.chat_history:
+        st.markdown("---")
+        st.subheader("Conversation History")
+        for chat in reversed(st.session_state.chat_history):
+            with st.container():
+                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
+                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
+                st.markdown("---")
 
 with col2:
     st.subheader("ℹ️ Information")
     st.markdown("""
     🧾 What This Assistant Can Do
 
-    - ✅ Answers questions about SME, R&D, and Export funding  
-    - ✅ Uses real, official government program documents  
-    - ✅ Built for future scaling — client portal, CRM, auto-drafts  
-    - ✅ Runs on a secure and flexible architecture
-
+    ✅ Answers questions about SME, R&D, and Export funding  
+    ✅ Uses real, official government program documents  
+    ✅ Built for future scaling — client portal, CRM, auto-drafts  
+    ✅ Runs on a secure and flexible architecture
     """)
     st.subheader("📈 Roadmap")
     st.markdown("""
@@ -136,4 +132,3 @@ with col2:
     - Phase 3: Auto Application Drafts  
     - Phase 4: CRM Integration
     """)
-

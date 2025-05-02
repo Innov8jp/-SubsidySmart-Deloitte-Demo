@@ -2,130 +2,90 @@ import streamlit as st
 import openai
 from datetime import datetime
 
-# --- CONFIG ---
+# --- APP CONFIGURATION ---
 st.set_page_config(
-    page_title="DeloitteSmart™ - AI Assistant",
-    page_icon=":moneybag:",
+    page_title="DeloitteSmart™ Consultant Portal",
+    page_icon=":briefcase:",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.image("deloitte_logo.png", width=200)
-    st.title("DeloitteSmart™ Settings")
-    openai_api_key = st.secrets["OPENAI_API_KEY"]
-    st.markdown("✅ OpenAI API key is pre-configured.")
-    st.markdown("Powered by [Innov8]")
-    st.markdown("Prototype Version 1.0")
-    st.markdown("Secure | Scalable | Smart")
+# --- OPENAI SETUP ---
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# --- MAIN PAGE ---
-st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
-st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
-st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")
+# --- MAIN INTERFACE ---
+st.title("DeloitteSmart™: Your AI Assistant")
+mode = st.radio("Mode:", ["Client-Asks", "Deloitte-Asks"], index=0)
 
-# --- Mode Toggle ---
-mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
-
-col1, col2 = st.columns([3, 1])
-
-with col1:
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    if mode == "Client-Asks (Default)":
-        st.subheader("Ask Your Question")
-        user_question = st.text_input("Type your subsidy-related question here:", key="input")
-
-        if st.button("Ask Deloitte AI Agent™"):
-            if not openai_api_key:
-                st.error("Please enter your OpenAI API Key in the sidebar.")
-            elif not user_question:
-                st.warning("Please type a question first.")
-            else:
-                openai.api_key = openai_api_key
-                prompt = f"""
-You are SubsidySmart™, an expert AI agent assisting Deloitte consultants and their clients in finding appropriate government subsidy programs based on their business situation.
-
-Context Documents:
-1. SME Business Expansion Grant 2025: Supports SMEs with up to 50% of project costs for new market expansion. (Eligibility: 5-100 employees, <$50M revenue)
-2. Technology Innovation Support Program 2025: Funds up to 60% of R&D projects in AI, IoT, biotech, and green energy. (Eligibility: 3+ years operational history)
-3. Export Development Assistance 2025: Supports export expansion with 70% coverage for international marketing costs. (Eligibility: $500K+ domestic sales)
-
-Please answer the user's question based on these programs only. Be clear, concise, and cite the matching program.
-
-User Question: {user_question}
-"""
-                with st.spinner("SubsidySmart™ is analyzing your question..."):
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are a professional and helpful government subsidy advisor."},
-                            {"role": "user",   "content": prompt}
-                        ]
-                    )
-                reply = response['choices'][0]['message']['content']
-                st.session_state.chat_history.append({
-                    "question": user_question,
-                    "answer": reply,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                })
-                st.success("✅ Answer generated below!")
-
-    elif mode == "Deloitte-Asks":
-        st.subheader("Get Smart Questions to Ask Your Client")
-        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="consult_input")
-
-        if st.button("Generate Consultant Questions"):
-            if not client_profile:
-                st.warning("Please describe the client first.")
-            else:
-                openai.api_key = openai_api_key
-                prompt = f"""
-You are DeloitteSmart™, an AI assistant. Based on the following client profile, generate a short list of key questions a Deloitte consultant should ask the client in order to assess eligibility for government subsidy programs.
-
-Client Profile:
-{client_profile}
-
-Return the questions in a clear, numbered format, grouped by subsidy type (e.g., SME Expansion, R&D, Export).
-"""
-                with st.spinner("SubsidySmart™ is preparing your interview questions..."):
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
-                            {"role": "user",   "content": prompt}
-                        ]
-                    )
-                consultant_questions = response['choices'][0]['message']['content']
-                st.markdown("### Suggested Interview Questions")
-                st.markdown(consultant_questions)
-
-    # Show conversation history
-    if st.session_state.chat_history:
+# Client-Asks flow
+if mode == "Client-Asks":
+    if "history" not in st.session_state:
+        st.session_state.history = []
+    st.subheader("Client Questions")
+    q = st.text_input("Question from client:")
+    if st.button("Ask AI") and q:
+        prompt = f"You are a professional subsidy advisor. Question: {q}"
+        with st.spinner("AI is responding..."):
+            resp = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role":"system","content":"You are a helpful subsidy advisor."},
+                    {"role":"user","content":prompt}
+                ]
+            )
+        a = resp.choices[0].message.content
+        st.session_state.history.append((q, a))
+    for cq, ca in reversed(st.session_state.history):
+        st.markdown(f"**Client:** {cq}")
+        st.markdown(f"**AI:** {ca}")
         st.markdown("---")
-        st.subheader("📜 Conversation History")
-        for chat in reversed(st.session_state.chat_history):
-            with st.container():
-                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
-                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-                st.markdown("---")
 
-with col2:
-    st.subheader("ℹ️ Information")
-    st.markdown("""
-🧾 What This Assistant Can Do
+# Deloitte-Asks flow w/ scoring
+else:
+    st.subheader("Get Questions to Ask Your Client")
+    profile = st.text_area("Client profile (industry, size, goals):")
 
-✅ Answers questions about SME, R&D, and Export funding  
-✅ Uses real, official government program documents  
-✅ Built for future scaling — client portal, CRM, auto-drafts  
-✅ Runs on a secure and flexible architecture
-    """)
-    st.subheader("📈 Roadmap")
-    st.markdown("""
-- Phase 1: Consultant Use (Today)  
-- Phase 2: Client Portal  
-- Phase 3: Auto Application Drafts  
-- Phase 4: CRM Integration
-    """)
+    with st.expander("📝 Optional: Score this client"):
+        age         = st.radio("Company age?", ["<3 years","≥3 years"])
+        industry    = st.multiselect("Industry?", ["AI","IoT","Biotech","Green Energy","Other"])
+        rd_budget   = st.radio("R&D Budget?", ["<200K","≥200K"])
+        exp_ready   = st.radio("Exporting?", ["No","Yes"])
+        revenue     = st.radio("Annual Revenue?", ["<500K","≥500K"])
+        employees   = st.slider("Employees", 1, 200, 10)
+        documents   = st.multiselect("Documents provided", ["Business Plan","Org Chart","Budget","Export Plan","Pitch Deck"])
+
+    if st.button("Generate Consultant Questions") and profile:
+        # AI Q-list
+        prompt = (
+            "You are a professional Deloitte consultant. "
+            "Based on this client profile, generate key assessment questions:\n" + profile
+        )
+        with st.spinner("Generating questions..."):
+            resp = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role":"system","content":"You are a skilled consultant."},
+                    {"role":"user","content":prompt}
+                ]
+            )
+        st.markdown("### Suggested Questions")
+        st.markdown(resp.choices[0].message.content)
+
+        # Eligibility scoring
+        score = 0
+        if age == "≥3 years":                   score += 15
+        if any(i in industry for i in ["AI","IoT","Biotech","Green Energy"]): score += 20
+        if rd_budget == "≥200K":                score += 20
+        if exp_ready == "Yes":                  score += 15
+        if revenue == "≥500K":                  score += 10
+        if 5 <= employees <= 100:              score += 10
+        score += len(documents) * 2
+
+        st.markdown("### 🧮 Eligibility Score")
+        st.metric("Score (%)", f"{score}%")
+        if score >= 85:
+            st.success("🟢 Highly Eligible")
+        elif score >= 65:
+            st.warning("🟡 Potentially Eligible — Requires Review")
+        else:
+            st.error("🔴 Low Eligibility or Incomplete")

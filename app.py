@@ -76,11 +76,14 @@ with col1:
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
-
-    elif mode == "Deloitte-Asks":
-        st.subheader("Get Smart Questions to Ask Your Client")
-        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):")
-        uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
+elif mode == "Deloitte-Asks":
+    st.subheader("Get Smart Questions to Ask Your Client")
+    client_profile = st.text_area("Describe the client (industry, size, goal, etc.):")
+    uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
+    with st.expander("📝 Optional: Score this client"):
+        # ... your scoring widgets ...
+    if st.button("Generate Consultant Questions"):
+        # ... your AI logic ...
         with st.expander("📝 Optional: Score this client"):
             age = st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
             industry = st.multiselect("Industry?", ["AI", "IoT", "Biotech", "Green Energy", "Other"])

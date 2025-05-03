@@ -32,18 +32,18 @@ with col1:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    if mode == "Client-Asks (Default)":
+   if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
         user_question = st.text_input("Type your subsidy-related question here:")
 
-    if st.button("Ask Deloitte AI Agent™"):
-       if not openai_api_key:
-         st.error("API key missing.")
-    elif not user_question:
-        st.warning("Please enter a question.")
-    else:
-        openai.api_key = openai_api_key
-        prompt = f"""
+        if st.button("Ask Deloitte AI Agent™"):
+            if not openai_api_key:
+                st.error("API key missing.")
+            elif not user_question:
+                st.warning("Please enter a question.")
+            else:
+                openai.api_key = openai_api_key
+                prompt = f"""
 You are a highly experienced Deloitte consultant specializing in Japanese government subsidies, known for your meticulous analysis and clear communication. When answering the user's question, please follow a structured thought process:
 
 1. **Identify Relevant Subsidy Programs:** Based on the user's question and the provided context, determine which of the following subsidy programs are most likely to be relevant.
@@ -57,7 +57,7 @@ You are a highly experienced Deloitte consultant specializing in Japanese govern
 
 User Question: {user_question}
 """
-                with st.spinner("Analyzing with DeloitteSmart™..."):  # <-- Corrected indentation
+                with st.spinner("Analyzing with DeloitteSmart™..."):
                     try:
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",

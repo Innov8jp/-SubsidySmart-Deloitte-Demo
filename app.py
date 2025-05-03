@@ -87,12 +87,12 @@ User Question: {user_question}
         uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
         with st.expander("📝 Optional: Score this client"):
             age = st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
-            industry = st.multiselect("Industry?", ["AI", "IoT", "Biotech", "Green Energy", "Other"])
+            industry = st.multiselect("Industry?", ["AI","IT", "IoT", "Biotech", "Green Energy", "Other"])
             rd_budget = st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
             export_ready = st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
             revenue = st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
             employees = st.slider("Number of employees?", 1, 200, 10)
-            documents = st.multiselect("Documents provided", ["Business Plan", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
+            documents = st.multiselect("Documents provided", ["Business Plan","Trial Balance","Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
 
         if st.button("Get AI Insights & Questions"):
             if not openai_api_key:

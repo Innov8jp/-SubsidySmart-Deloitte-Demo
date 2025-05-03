@@ -32,9 +32,13 @@ with col1:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
+    # ✅ Input persistence
+    if "user_question" not in st.session_state:
+        st.session_state.user_question = ""
+
     if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
-        user_question = st.text_input("Type your subsidy-related question here:")
+        user_question = st.text_input("Type your subsidy-related question here:", key="user_question")
 
         if st.button("Ask Deloitte AI Agent™"):
             if not openai_api_key:
@@ -69,6 +73,10 @@ User Question: {user_question}
                         })
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
+
+                        # ✅ Clear input
+                        st.session_state.user_question = ""
+
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
 
@@ -112,76 +120,3 @@ Client Document:
 """
                 with st.spinner("Getting AI Insights & Questions..."):
                     try:
-                        response = openai.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are a Deloitte subsidy expert."},
-                                {"role": "user", "content": prompt}
-                            ]
-                        )
-                        ai_response = response.choices[0].message.content
-                        st.markdown("### AI Insights & Recommendations")
-                        st.markdown(ai_response)
-                        st.session_state["initial_ai_response"] = ai_response
-                    except OpenAIError as e:
-                        st.error(f"OpenAI Error: {str(e)}")
-
-        # ✅ Always show this section when a document is uploaded
-        if uploaded_file:
-            st.subheader("Ask Questions About the Document")
-            followup_question = st.text_input("Type your question about the uploaded document here:")
-            if st.button("Ask AI About Document"):
-                if followup_question:
-                    question_prompt = f"""
-You are an AI assistant. Based ONLY on the following:
-
-Client Profile:
-{client_profile}
-
-Client Document:
-{document_content}
-
-Answer this question:
-{followup_question}
-"""
-                    with st.spinner("Getting answer..."):
-                        try:
-                            response = openai.chat.completions.create(
-                                model="gpt-3.5-turbo",
-                                messages=[
-                                    {"role": "system", "content": "You are an AI assistant answering based on documents."},
-                                    {"role": "user", "content": question_prompt}
-                                ]
-                            )
-                            answer = response.choices[0].message.content
-                            st.markdown(f"**Question:** {followup_question}")
-                            st.markdown(f"**Answer:** {answer}")
-                        except OpenAIError as e:
-                            st.error(f"OpenAI Error: {str(e)}")
-                else:
-                    st.warning("Please enter a question.")
-
-    # Chat History
-    if st.session_state.chat_history:
-        st.markdown("---")
-        st.subheader("Conversation History")
-        for chat in reversed(st.session_state.chat_history):
-            with st.container():
-                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
-                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-                st.markdown("---")
-
-with col2:
-    st.subheader("ℹ️ Assistant Overview")
-    st.markdown("""
-✅ Real-time subsidy advice  
-✅ Smart scoring system  
-✅ Ready for CRM + Drafting  
-""")
-    st.subheader("📈 Deloitte Roadmap")
-    st.markdown("""
-- Phase 1: Internal AI Assistant  
-- Phase 2: Client Portal  
-- Phase 3: CRM  
-- Phase 4: Analytics Dashboard  
-""")

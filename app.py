@@ -80,7 +80,7 @@ with col1:
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):")
-
+        uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
         with st.expander("📝 Optional: Score this client"):
             age = st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
             industry = st.multiselect("Industry?", ["AI", "IoT", "Biotech", "Green Energy", "Other"])
@@ -90,53 +90,48 @@ with col1:
             employees = st.slider("Number of employees?", 1, 200, 10)
             documents = st.multiselect("Documents provided", ["Business Plan", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
 
-        if st.button("Generate Consultant Questions"):
-            if not openai_api_key:
-                st.error("API key missing.")
-            elif not client_profile:
-                st.warning("Please describe the client first.")
-            else:
-                openai.api_key = openai_api_key
-                prompt = f"""
-                You are SubsidySmart™, a Deloitte-trained AI assistant. Generate key questions for assessing eligibility based on:
-                - SME Business Expansion Grant 2025
-                - Technology Innovation Support Program 2025
-                - Export Development Assistance 2025
+       if st.button("Get AI Insights & Questions"):
+    if not openai_api_key:
+        st.error("API key missing.")
+    elif not client_profile:
+        st.warning("Please describe the client first.")
+    else:
+        openai.api_key = openai_api_key
+        document_content = None
+        if uploaded_file is not None:
+            document_content = uploaded_file.read().decode("utf-8")
+            st.write(f"📄 Analyzing document: {uploaded_file.name}") # Optional: Show filename
 
-                Client Profile:
-                {client_profile}
-                """
+        prompt = f"""
+        You are SubsidySmart™, a Deloitte-trained AI assistant. Based on the following client profile and any provided document, generate a short list of key questions a Deloitte consultant should ask the client in order to assess eligibility for Japanese government subsidy programs. Also, provide 1-2 specific subsidy program recommendations with a brief justification for each.
 
-                with st.spinner("Generating questions..."):
-                    try:
-                        response = openai.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are a professional Deloitte consultant creating client assessment questions."},
-                                {"role": "user", "content": prompt}
-                            ]
-                        )
-                        consultant_questions = response.choices[0].message.content
-                        st.markdown("### Suggested Interview Questions")
-                        st.markdown(consultant_questions)
+        Client Profile:
+        {client_profile}
 
-                        score = 0
-                        weights = {"age":15, "industry":20, "rd":20, "export":15, "rev":10, "emp":10, "docs":2}
-                        if age == "≥ 3 years": score += weights["age"]
-                        if any(i in ["AI", "IoT", "Biotech", "Green Energy"] for i in industry): score += weights["industry"]
-                        if rd_budget == "≥ $200K": score += weights["rd"]
-                        if export_ready == "Yes": score += weights["export"]
-                        if revenue == "≥ $500K": score += weights["rev"]
-                        if 5 <= employees <= 100: score += weights["emp"]
-                        score += len(documents) * weights["docs"]
+        {'Client Document Content:' + document_content if document_content else 'No client document provided.'}
 
-                        st.metric("Eligibility Score", f"{score}%")
-                        if score >= 85: st.success("🟢 Highly Eligible")
-                        elif score >= 70: st.warning("🔒 Likely Eligible - Needs Review")
-                        else: st.error("🔴 Not Currently Eligible")
+        Consider the following potential programs:
+        - SME Business Expansion Grant 2025 (Eligibility: 5-100 employees, <$50M revenue, new market expansion focus)
+        - Technology Innovation Support Program 2025 (Eligibility: 3+ years operational history, R&D in AI, IoT, biotech, green energy)
+        - Export Development Assistance 2025 (Eligibility: $500K+ domestic sales, export expansion plans)
 
-                    except OpenAIError as e:
-                        st.error(f"OpenAI Error: {str(e)}")
+        Focus on identifying the most relevant program(s) and generating insightful follow-up questions.
+        """
+        with st.spinner("Getting AI Insights & Questions..."):
+            try:
+                response = openai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are an expert Deloitte subsidy consultant analyzing client information to provide program recommendations and key questions."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                ai_response = response.choices[0].message.content
+                st.markdown("### AI Insights & Recommendations")
+                st.markdown(ai_response)
+                # ... (We'll integrate scoring later based on this response) ...
+            except OpenAIError as e:
+                st.error(f"OpenAI Error: {str(e)}")
 
     if st.session_state.chat_history:
         st.markdown("---")

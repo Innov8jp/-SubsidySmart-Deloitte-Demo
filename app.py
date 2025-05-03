@@ -76,7 +76,7 @@ with col1:
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
-elif mode == "Deloitte-Asks":
+if mode == "Client-Asks (Default): 
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):")
         uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])

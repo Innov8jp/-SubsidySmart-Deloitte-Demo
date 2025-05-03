@@ -13,7 +13,6 @@ st.set_page_config(
 # --- SIDEBAR ---
 with st.sidebar:
     st.image("deloitte_logo.png", width=200)
-    st.title("DeloitteSmart™ Settings")
     openai_api_key = st.secrets["OPENAI_API_KEY"]
     st.markdown("✅ OpenAI API key is pre-configured.")
     st.markdown("Powered by [Innov8]")
@@ -59,14 +58,14 @@ with col1:
                 """
 
                 with st.spinner("SubsidySmart™ is analyzing your question..."):
-                    response = openai.ChatCompletion.create(
+                    response = openai.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
                             {"role": "system", "content": "You are a professional and helpful government subsidy advisor."},
                             {"role": "user", "content": prompt}
                         ]
                     )
-                    reply = response['choices'][0]['message']['content']
+                    reply = response.choices[0].message.content
                     st.session_state.chat_history.append({
                         "question": user_question,
                         "answer": reply,
@@ -107,14 +106,14 @@ with col1:
                 """
 
                 with st.spinner("SubsidySmart™ is preparing your interview questions..."):
-                    response = openai.ChatCompletion.create(
+                    response = openai.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
                             {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
                             {"role": "user", "content": prompt}
                         ]
                     )
-                    consultant_questions = response['choices'][0]['message']['content']
+                    consultant_questions = response.choices[0].message.content
                     st.markdown("### Suggested Interview Questions")
                     st.markdown(consultant_questions)
 

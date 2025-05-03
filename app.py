@@ -1,15 +1,15 @@
 import streamlit as st
-import openai
-from datetime import datetime
-from openai import OpenAIError
-
-# === MUST BE FIRST COMMAND ===
+# --- CONFIG ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
     page_icon=":moneybag:",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+import openai
+from datetime import datetime
+from openai import OpenAIError
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -44,19 +44,19 @@ with col1:
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-                You are a highly experienced Deloitte consultant specializing in Japanese government subsidies.
+You are a highly experienced Deloitte consultant specializing in Japanese government subsidies, known for your meticulous analysis and clear communication. When answering the user's question, please follow a structured thought process:
 
-                1. Identify relevant programs:
-                   - SME Business Expansion Grant 2025
-                   - Technology Innovation Support Program 2025
-                   - Export Development Assistance 2025
+1. **Identify Relevant Subsidy Programs:** Based on the user's question and the provided context, determine which of the following subsidy programs are most likely to be relevant.
+   - SME Business Expansion Grant 2025: Supports SMEs with up to 50% of project costs for new market expansion. (Eligibility: 5-100 employees, <$50M revenue)
+   - Technology Innovation Support Program 2025: Funds up to 60% of R&D projects in AI, IoT, biotech, and green energy. (Eligibility: 3+ years operational history)
+   - Export Development Assistance 2025: Supports export expansion with 70% coverage for international marketing costs. (Eligibility: $500K+ domestic sales)
 
-                2. Assess eligibility based on info.
-                3. Respond concisely, asking for more info if needed.
+2. **Analyze Eligibility Criteria:** For each potentially relevant program, briefly analyze if the user's question provides enough information to assess eligibility based on the stated criteria. Highlight any missing information that would be needed for a definitive assessment.
 
-                User Question: {user_question}
-                """
+3. **Provide a Concise Answer:** Based on your analysis, provide a clear and concise answer to the user's question, citing the most relevant subsidy program(s). If the information is insufficient for a definitive answer, explain what additional details are required.
 
+User Question: {user_question}
+"""
                 with st.spinner("Analyzing with DeloitteSmart™..."):
                     try:
                         response = openai.chat.completions.create(
@@ -67,6 +67,10 @@ with col1:
                             ]
                         )
                         reply = response.choices[0].message.content
+                        # --- DEBUGGING ---
+                        st.write(f"**DEBUG: Raw OpenAI Response:** {response}")
+                        st.write(f"**DEBUG: AI Reply:** {reply}")
+                        # --- END DEBUGGING ---
                         st.session_state.chat_history.append({
                             "question": user_question,
                             "answer": reply,
@@ -76,7 +80,8 @@ with col1:
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
-if mode == "Client-Asks (Default): 
+
+    elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):")
         uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
@@ -136,21 +141,20 @@ if mode == "Client-Asks (Default):
         st.markdown("---")
         st.subheader("Conversation History")
         for chat in reversed(st.session_state.chat_history):
-            st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
-            st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-            st.markdown("---")
+            with st.container():
+                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
+                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
+                st.markdown("---")
 
 with col2:
     st.subheader("ℹ️ Assistant Overview")
     st.markdown("""
-    ✅ Real-time subsidy advice  
-    ✅ Smart scoring system  
-    ✅ Ready for CRM + Drafting  
+    ✅ Real-time subsidy advice
+    ✅ Smart scoring system
+    ✅ Ready for CRM + Drafting
     """)
     st.subheader("📈 Deloitte Roadmap")
     st.markdown("""
-    - Phase 1: Internal AI Assistant  
-    - Phase 2: Client Portal  
-    - Phase 3: CRM + Auto Drafts  
-    - Phase 4: Analytics Dashboard
-    """)
+    - Phase 1: Internal AI Assistant
+    - Phase 2: Client Portal
+    - Phase 3: CRM

@@ -138,6 +138,171 @@ User Question: {user_question}
                         st.markdown(ai_response)
                         # --- (We'll integrate scoring later based on this response) ---
                     except OpenAIError as e:
+if st.button("Get AI Insights & Questions"):
+
+            if not openai_api_key:
+
+                st.error("API key missing.")
+
+            elif not client_profile:
+
+                st.warning("Please describe the client first.")
+
+            else:
+
+                openai.api_key = openai_api_key
+
+                document_content = None
+
+                if uploaded_file is not None:
+
+                    document_content = uploaded_file.read().decode("utf-8")
+
+                    st.write(f"📄 Analyzing document: {uploaded_file.name}") # Optional: Show filename
+
+
+
+                prompt = f"""
+
+                You are SubsidySmart™, a Deloitte-trained AI assistant with advanced document analysis capabilities. Your goal is to help Deloitte consultants quickly assess client subsidy eligibility.
+
+
+
+                Analyze the following Client Profile and any provided Client Document Content to determine potential eligibility for Japanese government subsidies and suggest insightful follow-up questions. Also, recommend 1-2 specific subsidy programs with clear justifications based on the provided information.
+
+
+
+                **Client Profile:**
+
+                {client_profile}
+
+
+
+                **Client Document Content:**
+
+                {'[START DOCUMENT]' + document_content + '[END DOCUMENT]' if document_content else 'No client document provided.'}
+
+
+
+                Consider the following potential programs and their key eligibility criteria:
+
+                - **SME Business Expansion Grant 2025:** Supports SMEs (5-100 employees, <$50M revenue) for new market expansion. Look for keywords like "new market," "expansion," "growth," "overseas," etc.
+
+                - **Technology Innovation Support Program 2025:** Funds R&D projects in AI, IoT, biotech, and green energy (3+ years operational history). Look for keywords like "research," "development," "innovation," "technology," and specific tech areas.
+
+                - **Export Development Assistance 2025:** Supports export expansion (>$500K domestic sales). Look for keywords like "export," "international," "global," "marketing abroad," etc.
+
+
+
+                Provide your recommendations and questions in a clear, concise format. Highlight the specific evidence from the Client Profile or Document Content that supports your suggestions.
+
+                """
+
+                with st.spinner("Getting AI Insights & Questions..."):
+
+                    try:
+
+                        response = openai.chat.completions.create(
+
+                            model="gpt-3.5-turbo",
+
+                            messages=[
+
+                                {"role": "system", "content": "You are an expert Deloitte subsidy consultant analyzing client information to provide program recommendations and key questions."},
+
+                                {"role": "user", "content": prompt}
+
+                            ]
+
+                        )
+
+                        ai_response = response.choices[0].message.content
+
+                        st.markdown("### AI Insights & Recommendations")
+
+                        st.markdown(ai_response)
+
+                        st.session_state["initial_ai_response"] = ai_response # Store initial response
+
+
+
+                    except OpenAIError as e:
+
+                        st.error(f"OpenAI Error: {str(e)}")
+
+
+
+        st.subheader("Ask Questions About the Document")
+
+        followup_question = st.text_input("Type your question about the uploaded document here:")
+
+        if st.button("Ask AI About Document"):
+
+            if followup_question and uploaded_file:
+
+                openai.api_key = openai_api_key
+
+                question_prompt = f"""
+
+                You are an AI assistant that can answer questions based on the following Client Profile and Client Document Content.
+
+
+
+                **Client Profile:**
+
+                {client_profile}
+
+
+
+                **Client Document Content:**
+
+                [START DOCUMENT]{document_content}[END DOCUMENT]
+
+
+
+                Answer the following question based *only* on the information provided above:
+
+
+
+                **Question:** {followup_question}
+
+                """
+
+                with st.spinner("Getting answer..."):
+
+                    try:
+
+                        response = openai.chat.completions.create(
+
+                            model="gpt-3.5-turbo",
+
+                            messages=[
+
+                                {"role": "system", "content": "You are an AI assistant answering questions based on provided documents."},
+
+                                {"role": "user", "content": question_prompt}
+
+                            ]
+
+                        )
+
+                        answer = response.choices[0].message.content
+
+                        st.markdown(f"**Question:** {followup_question}")
+
+                        st.markdown(f"**Answer:** {answer}")
+
+                    except OpenAIError as e:
+
+                        st.error(f"OpenAI Error: {str(e)}")
+
+            elif not uploaded_file:
+
+                st.warning("Please upload a document first to ask questions about it.")
+
+            elif not followup_question:
+
+                st.warning("Please enter a question.")
                         st.error(f"OpenAI Error: {str(e)}")
 
     if st.session_state.chat_history:

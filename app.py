@@ -170,4 +170,35 @@ with col1:
                         else:
                             score_breakdown["Annual Revenue"] = 0
 
-                        if 5 <=
+                        if 5 <= employees <= 100:
+                            score += weights["employees"]
+                            score_breakdown["Number of Employees"] = weights["employees"]
+                        else:
+                            score_breakdown["Number of Employees"] = 0
+
+                        documents_points = len(documents) * weights["documents"]
+                        score += documents_points
+                        score_breakdown["Documents Provided"] = documents_points
+
+                        st.markdown("### 🧮 Eligibility Score Breakdown")
+                        for criterion, points in score_breakdown.items():
+                            st.markdown(f"- **{criterion}:** {points} points")
+
+                        st.metric("Total Score (%)", f"{score}%")
+
+                        st.markdown("### 🚦 Eligibility Status")
+                        if score >= 85:
+                            st.success("🟢 Highly Eligible")
+                            st.markdown("The client meets most of the key criteria and has a strong likelihood of eligibility.")
+                        elif score >= 70:
+                            st.warning("🟡 Likely Eligible, Needs Review")
+                            st.markdown("The client meets a significant number of criteria but may need further review to confirm specific requirements.")
+                        elif score >= 55:
+                            st.warning("🟠 Potentially Eligible, Further Assessment Required")
+                            st.markdown("The client meets some criteria, but a more detailed assessment is needed to determine eligibility and identify suitable programs.")
+                        else:
+                            st.error("🔴 Not Currently Eligible")
+                            st.markdown("Based on the information provided, the client does not currently meet the key eligibility criteria for the considered programs.")
+
+                    except OpenAIError as e:
+                        st.error(f"OpenAI Error: {str(e)}")

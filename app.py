@@ -167,6 +167,12 @@ Answer this question:
                             st.error(f"OpenAI Error: {str(e)}")
                 else:
                     st.warning("Please enter a question.")
+# --- Optional: Reset Chat Button ---
+if st.session_state.get("chat_history"):
+    if st.button("🔁 Reset Chat"):
+        st.session_state.chat_history = []
+        st.session_state.user_question = ""
+        st.success("Chat history cleared.")
 
     # ✅ Chat History Always Visible
     if st.session_state.get("chat_history"):

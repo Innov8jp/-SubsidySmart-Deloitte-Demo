@@ -32,7 +32,7 @@ with col1:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-if mode == "Client-Asks (Default)":
+    if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
         user_question = st.text_input("Type your subsidy-related question here:")
 
@@ -80,15 +80,6 @@ User Question: {user_question}
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
-
-    if st.session_state.chat_history:
-        st.markdown("---")
-        st.subheader("Conversation History")
-        for chat in reversed(st.session_state.chat_history):
-            with st.container():
-                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
-                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-                st.markdown("---")
 
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
@@ -167,50 +158,3 @@ User Question: {user_question}
                         if rd_budget == "≥ $200K":
                             score += weights["rd_budget"]
                             score_breakdown["R&D Budget"] = weights["rd_budget"]
-                        else:
-                            score_breakdown["R&D Budget"] = 0
-
-                        if export_ready == "Yes":
-                            score += weights["export_ready"]
-                            score_breakdown["Export Involvement"] = weights["export_ready"]
-                        else:
-                            score_breakdown["Export Involvement"] = 0
-
-                        if revenue == "≥ $500K":
-                            score += weights["revenue"]
-                            score_breakdown["Annual Revenue"] = weights["revenue"]
-                        else:
-                            score_breakdown["Annual Revenue"] = 0
-
-                        if 5 <= employees <= 100:
-                            score += weights["employees"]
-                            score_breakdown["Number of Employees"] = weights["employees"]
-                        else:
-                            score_breakdown["Number of Employees"] = 0
-
-                        documents_points = len(documents) * weights["documents"]
-                        score += documents_points
-                        score_breakdown["Documents Provided"] = documents_points
-
-                        st.markdown("### 🧮 Eligibility Score Breakdown")
-                        for criterion, points in score_breakdown.items():
-                            st.markdown(f"- **{criterion}:** {points} points")
-
-                        st.metric("Total Score (%)", f"{score}%")
-
-                        st.markdown("### 🚦 Eligibility Status")
-                        if score >= 85:
-                            st.success("🟢 Highly Eligible")
-                            st.markdown("The client meets most of the key criteria and has a strong likelihood of eligibility.")
-                        elif score >= 70:
-                            st.warning("🟡 Likely Eligible, Needs Review")
-                            st.markdown("The client meets a significant number of criteria but may need further review to confirm specific requirements.")
-                        elif score >= 55:
-                            st.warning("🟠 Potentially Eligible, Further Assessment Required")
-                            st.markdown("The client meets some criteria, but a more detailed assessment is needed to determine eligibility and identify suitable programs.")
-                        else:
-                            st.error("🔴 Not Currently Eligible")
-                            st.markdown("Based on the information provided, the client does not currently meet the key eligibility criteria for the considered programs.")
-
-                    except OpenAIError as e:
-                        st.error(f"OpenAI Error: {str(e)}")

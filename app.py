@@ -160,29 +160,20 @@ if st.button("Get AI Insights & Questions"):
 
                     st.write(f"📄 Analyzing document: {uploaded_file.name}") # Optional: Show filename
 
-
-
                 prompt = f"""
 
                 You are SubsidySmart™, a Deloitte-trained AI assistant with advanced document analysis capabilities. Your goal is to help Deloitte consultants quickly assess client subsidy eligibility.
 
-
-
                 Analyze the following Client Profile and any provided Client Document Content to determine potential eligibility for Japanese government subsidies and suggest insightful follow-up questions. Also, recommend 1-2 specific subsidy programs with clear justifications based on the provided information.
-
-
 
                 **Client Profile:**
 
                 {client_profile}
 
 
-
                 **Client Document Content:**
 
                 {'[START DOCUMENT]' + document_content + '[END DOCUMENT]' if document_content else 'No client document provided.'}
-
-
 
                 Consider the following potential programs and their key eligibility criteria:
 
@@ -197,7 +188,6 @@ if st.button("Get AI Insights & Questions"):
                 Provide your recommendations and questions in a clear, concise format. Highlight the specific evidence from the Client Profile or Document Content that supports your suggestions.
 
                 """
-
                 with st.spinner("Getting AI Insights & Questions..."):
 
                     try:
@@ -224,13 +214,9 @@ if st.button("Get AI Insights & Questions"):
 
                         st.session_state["initial_ai_response"] = ai_response # Store initial response
 
-
-
                     except OpenAIError as e:
 
                         st.error(f"OpenAI Error: {str(e)}")
-
-
 
         st.subheader("Ask Questions About the Document")
 
@@ -246,23 +232,16 @@ if st.button("Get AI Insights & Questions"):
 
                 You are an AI assistant that can answer questions based on the following Client Profile and Client Document Content.
 
-
-
                 **Client Profile:**
 
                 {client_profile}
-
 
 
                 **Client Document Content:**
 
                 [START DOCUMENT]{document_content}[END DOCUMENT]
 
-
-
                 Answer the following question based *only* on the information provided above:
-
-
 
                 **Question:** {followup_question}
 

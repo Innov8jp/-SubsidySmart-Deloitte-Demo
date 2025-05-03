@@ -133,7 +133,7 @@ User Question: {user_question}
                         ai_response = response.choices[0].message.content
                         st.markdown("### AI Insights & Recommendations")
                         st.markdown(ai_response)
-                        # ... (We'll integrate scoring later based on this response) ...
+                        # --- (We'll integrate scoring later based on this response) ---
                     except OpenAIError as e:
                         st.error(f"OpenAI Error: {str(e)}")
 
@@ -158,3 +158,5 @@ with col2:
     - Phase 1: Internal AI Assistant
     - Phase 2: Client Portal
     - Phase 3: CRM
+    - Phase 4: Analytics Dashboard
+    """)

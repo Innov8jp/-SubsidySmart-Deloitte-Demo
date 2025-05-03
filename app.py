@@ -20,6 +20,13 @@ with st.sidebar:
     st.markdown("Prototype Version 1.0")
     st.markdown("Secure | Scalable | Smart")
 
+# --- SESSION STATE SETUP ---
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+if "user_question" not in st.session_state:
+    st.session_state.user_question = ""
+
 # --- MAIN PAGE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
@@ -28,19 +35,15 @@ st.caption("Ask any business subsidy question and get instant expert advice, pow
 mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
 col1, col2 = st.columns([3, 1])
 
+# --- LEFT COLUMN ---
 with col1:
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    # ✅ Input persistence
-    if "user_question" not in st.session_state:
-        st.session_state.user_question = ""
-
     if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
-        user_question = st.text_input("Type your subsidy-related question here:", key="user_question")
+        st.text_input("Type your subsidy-related question here:", key="user_question")
 
         if st.button("Ask Deloitte AI Agent™"):
+            user_question = st.session_state.user_question.strip()
+
             if not openai_api_key:
                 st.error("API key missing.")
             elif not user_question:
@@ -73,8 +76,6 @@ User Question: {user_question}
                         })
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
-
-                        # ✅ Clear input
                         st.session_state.user_question = ""
 
                     except OpenAIError as e:
@@ -87,12 +88,12 @@ User Question: {user_question}
 
         with st.expander("📝 Optional: Score this client"):
             st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
-            st.multiselect("Industry?", ["AI","IT", "IoT", "Biotech", "Green Energy", "Other"])
+            st.multiselect("Industry?", ["AI", "IT", "IoT", "Biotech", "Green Energy", "Other"])
             st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
             st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
             st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
             st.slider("Number of employees?", 1, 200, 10)
-            st.multiselect("Documents provided", ["Business Plan","Trial Balance","Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
+            st.multiselect("Documents provided", ["Business Plan", "Trial Balance", "Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
 
         document_content = None
         if uploaded_file:
@@ -167,14 +168,15 @@ Answer this question:
                             st.error(f"OpenAI Error: {str(e)}")
                 else:
                     st.warning("Please enter a question.")
-# --- Optional: Reset Chat Button ---
-if st.session_state.get("chat_history"):
-    if st.button("🔁 Reset Chat"):
-        st.session_state.chat_history = []
-        st.session_state.user_question = ""
-        st.success("Chat history cleared.")
 
-    # ✅ Chat History Always Visible
+    # --- Optional: Reset Chat Button ---
+    if st.session_state.get("chat_history"):
+        if st.button("🔁 Reset Chat"):
+            st.session_state.chat_history = []
+            st.session_state.user_question = ""
+            st.success("Chat history cleared.")
+
+    # --- Display Chat History ---
     if st.session_state.get("chat_history"):
         st.markdown("---")
         st.subheader("Conversation History")
@@ -184,6 +186,7 @@ if st.session_state.get("chat_history"):
                 st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
                 st.markdown("---")
 
+# --- RIGHT COLUMN ---
 with col2:
     st.subheader("ℹ️ Assistant Overview")
     st.markdown("""

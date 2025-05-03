@@ -55,10 +55,10 @@ with col1:
 
                 3. **Provide a Concise Answer:** Based on your analysis, provide a clear and concise answer to the user's question, citing the most relevant subsidy program(s). If the information is insufficient for a definitive answer, explain what additional details are required.
 
+               prompt = f"""
                 User Question: {user_question}
                 """
-
-                with st.spinner("Analyzing with DeloitteSmart™..."):
+                with st.spinner("Analyzing with DeloitteSmart™..."):  # <-- Corrected indentation
                     try:
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",

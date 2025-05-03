@@ -32,7 +32,7 @@ with col1:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    if mode == "Client-Asks (Default)":
+           if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
         user_question = st.text_input("Type your subsidy-related question here:")
 
@@ -68,6 +68,10 @@ with col1:
                             ]
                         )
                         reply = response.choices[0].message.content
+                        # --- DEBUGGING ---
+                        st.write(f"**DEBUG: Raw OpenAI Response:** {response}")
+                        st.write(f"**DEBUG: AI Reply:** {reply}")
+                        # --- END DEBUGGING ---
                         st.session_state.chat_history.append({
                             "question": user_question,
                             "answer": reply,
@@ -77,6 +81,15 @@ with col1:
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
+
+    if st.session_state.chat_history:
+        st.markdown("---")
+        st.subheader("Conversation History")
+        for chat in reversed(st.session_state.chat_history):
+            with st.container():
+                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
+                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
+                st.markdown("---")
 
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")

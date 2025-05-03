@@ -32,7 +32,7 @@ with col1:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-   if mode == "Client-Asks (Default)":
+if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
         user_question = st.text_input("Type your subsidy-related question here:")
 

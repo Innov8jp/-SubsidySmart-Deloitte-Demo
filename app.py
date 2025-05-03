@@ -1,3 +1,4 @@
+
 import streamlit as st
 import openai
 from datetime import datetime
@@ -76,7 +77,9 @@ User Question: {user_question}
                         })
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
-                        st.session_state.user_question = ""
+
+                        del st.session_state["user_question"]
+                        st.experimental_rerun()
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
@@ -164,8 +167,8 @@ Answer this question:
     if st.session_state.chat_history:
         if st.button("🔁 Reset Chat"):
             st.session_state.chat_history = []
-            st.session_state.user_question = ""
             st.success("Chat history cleared.")
+            st.experimental_rerun()
 
     # --- Display Chat History ---
     if st.session_state.chat_history:

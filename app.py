@@ -1,3 +1,4 @@
+import streamlit as st
 # --- CONFIG ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
@@ -6,7 +7,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-import streamlit as st
 import openai
 from datetime import datetime
 from openai import OpenAIError

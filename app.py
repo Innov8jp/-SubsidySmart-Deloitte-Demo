@@ -107,20 +107,23 @@ User Question: {user_question}
                     st.write(f"📄 Analyzing document: {uploaded_file.name}") # Optional: Show filename
 
                 prompt = f"""
-                You are SubsidySmart™, a Deloitte-trained AI assistant. Based on the following client profile and any provided document, generate a short list of key questions a Deloitte consultant should ask the client in order to assess eligibility for Japanese government subsidy programs. Also, provide 1-2 specific subsidy program recommendations with a brief justification for each.
+            You are SubsidySmart™, a Deloitte-trained AI assistant with advanced document analysis capabilities. Your goal is to help Deloitte consultants quickly assess client subsidy eligibility.
 
-                Client Profile:
-                {client_profile}
+            Analyze the following Client Profile and any provided Client Document Content to determine potential eligibility for Japanese government subsidies and suggest insightful follow-up questions. Also, recommend 1-2 specific subsidy programs with clear justifications based on the provided information.
 
-                {'Client Document Content:' + document_content if document_content else 'No client document provided.'}
+            **Client Profile:**
+            {client_profile}
 
-                Consider the following potential programs:
-                - SME Business Expansion Grant 2025 (Eligibility: 5-100 employees, <$50M revenue, new market expansion focus)
-                - Technology Innovation Support Program 2025 (Eligibility: 3+ years operational history, R&D in AI, IoT, biotech, green energy)
-                - Export Development Assistance 2025 (Eligibility: $500K+ domestic sales, export expansion plans)
+            **Client Document Content:**
+            {'[START DOCUMENT]' + document_content + '[END DOCUMENT]' if document_content else 'No client document provided.'}
 
-                Focus on identifying the most relevant program(s) and generating insightful follow-up questions.
-                """
+            Consider the following potential programs and their key eligibility criteria:
+            - **SME Business Expansion Grant 2025:** Supports SMEs (5-100 employees, <$50M revenue) for new market expansion. Look for keywords like "new market," "expansion," "growth," "overseas," etc.
+            - **Technology Innovation Support Program 2025:** Funds R&D projects in AI, IoT, biotech, and green energy (3+ years operational history). Look for keywords like "research," "development," "innovation," "technology," and specific tech areas.
+            - **Export Development Assistance 2025:** Supports export expansion (>$500K domestic sales). Look for keywords like "export," "international," "global," "marketing abroad," etc.
+
+            Provide your recommendations and questions in a clear, concise format. Highlight the specific evidence from the Client Profile or Document Content that supports your suggestions.
+            """
                 with st.spinner("Getting AI Insights & Questions..."):
                     try:
                         response = openai.chat.completions.create(

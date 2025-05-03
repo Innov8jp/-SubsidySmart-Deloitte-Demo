@@ -48,7 +48,7 @@ with col1:
 
                 1. **Identify Relevant Subsidy Programs:** Based on the user's question and the provided context, determine which of the following subsidy programs are most likely to be relevant.
                    - SME Business Expansion Grant 2025: Supports SMEs with up to 50% of project costs for new market expansion. (Eligibility: 5-100 employees, <$50M revenue)
-                   - Technology Innovation Support Program 2025: Funds up to 60% of R&D projects in AI, IoT, biotech, and green energy. (Eligibility: 3+ years operational history)
+                   - Technology Innovation Support Program 2025: Funds up to 60% of R&D projects in IT, AI, IoT, biotech and green energy. (Eligibility: 3+ years operational history)
                    - Export Development Assistance 2025: Supports export expansion with 70% coverage for international marketing costs. (Eligibility: $500K+ domestic sales)
 
                 2. **Analyze Eligibility Criteria:** For each potentially relevant program, briefly analyze if the user's question provides enough information to assess eligibility based on the stated criteria. Highlight any missing information that would be needed for a definitive assessment.
@@ -89,7 +89,7 @@ with col1:
             export_ready = st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
             revenue = st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
             employees = st.slider("Number of employees?", 1, 200, 10)
-            documents = st.multiselect("Documents provided", ["Business Plan", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
+            documents = st.multiselect("Documents provided", ["Business Plan", "Org Chart", "Budget","Annual Tax Return","Latest Trial Balance", "Export Plan", "Pitch Deck"])
 
         if st.button("Generate Consultant Questions"):
             if not openai_api_key:

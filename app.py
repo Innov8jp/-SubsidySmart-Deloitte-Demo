@@ -44,14 +44,16 @@ with col1:
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-                You are SubsidySmart™, an expert AI agent assisting Deloitte consultants and their clients in finding appropriate government subsidy programs based on their business situation.
+                You are a highly experienced Deloitte consultant specializing in Japanese government subsidies, known for your meticulous analysis and clear communication. When answering the user's question, please follow a structured thought process:
 
-                Context Documents:
-                1. SME Business Expansion Grant 2025: Supports SMEs with up to 50% of project costs for new market expansion. (Eligibility: 5-100 employees, <$50M revenue)
-                2. Technology Innovation Support Program 2025: Funds up to 60% of R&D projects in AI, IoT, biotech, and green energy. (Eligibility: 3+ years operational history)
-                3. Export Development Assistance 2025: Supports export expansion with 70% coverage for international marketing costs. (Eligibility: $500K+ domestic sales)
+                1. **Identify Relevant Subsidy Programs:** Based on the user's question and the provided context, determine which of the following subsidy programs are most likely to be relevant.
+                   - SME Business Expansion Grant 2025: Supports SMEs with up to 50% of project costs for new market expansion. (Eligibility: 5-100 employees, <$50M revenue)
+                   - Technology Innovation Support Program 2025: Funds up to 60% of R&D projects in AI, IoT, biotech, and green energy. (Eligibility: 3+ years operational history)
+                   - Export Development Assistance 2025: Supports export expansion with 70% coverage for international marketing costs. (Eligibility: $500K+ domestic sales)
 
-                Please answer the user's question based on these programs only. Be clear, concise, and cite the matching program.
+                2. **Analyze Eligibility Criteria:** For each potentially relevant program, briefly analyze if the user's question provides enough information to assess eligibility based on the stated criteria. Highlight any missing information that would be needed for a definitive assessment.
+
+                3. **Provide a Concise Answer:** Based on your analysis, provide a clear and concise answer to the user's question, citing the most relevant subsidy program(s). If the information is insufficient for a definitive answer, explain what additional details are required.
 
                 User Question: {user_question}
                 """
@@ -61,7 +63,7 @@ with col1:
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
-                                {"role": "system", "content": "You are a professional and helpful government subsidy advisor."},
+                                {"role": "system", "content": "You are a highly experienced Deloitte consultant specializing in Japanese government subsidies."},
                                 {"role": "user", "content": prompt}
                             ]
                         )
@@ -97,12 +99,17 @@ with col1:
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-                You are SubsidySmart™, a Deloitte-trained AI assistant. Based on the following client profile, generate a short list of key questions a Deloitte consultant should ask the client in order to assess eligibility for government subsidy programs.
+                You are SubsidySmart™, a Deloitte-trained AI assistant. Based on the following client profile, generate a short list of key questions a Deloitte consultant should ask the client in order to assess eligibility for Japanese government subsidy programs. Group the questions by the relevant subsidy program.
 
                 Client Profile:
                 {client_profile}
 
-                Return the questions in a clear, numbered format, grouped by subsidy type (e.g., SME Expansion, R&D, Export).
+                Consider the following potential programs:
+                - SME Business Expansion Grant 2025 (Eligibility: 5-100 employees, <$50M revenue, new market expansion focus)
+                - Technology Innovation Support Program 2025 (Eligibility: 3+ years operational history, R&D in AI, IoT, biotech, green energy)
+                - Export Development Assistance 2025 (Eligibility: $500K+ domestic sales, export expansion plans)
+
+                Return the questions in a clear, numbered format under each relevant subsidy program heading.
                 """
 
                 with st.spinner("Generating interview questions..."):
@@ -110,7 +117,7 @@ with col1:
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
-                                {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions."},
+                                {"role": "system", "content": "You are a professional Deloitte consultant creating effective client assessment questions for Japanese government subsidies."},
                                 {"role": "user", "content": prompt}
                             ]
                         )
@@ -152,14 +159,14 @@ with col1:
 with col2:
     st.subheader("ℹ️ Assistant Overview")
     st.markdown("""
-    ✅ Real-time subsidy advice  
-    ✅ Smart scoring system  
+    ✅ Real-time subsidy advice
+    ✅ Smart scoring system
     ✅ Phase 2 ready: CRM integration + auto-application drafts
     """)
     st.subheader("📈 Deloitte Roadmap")
     st.markdown("""
-    - Phase 1: Internal AI use  
-    - Phase 2: Client Portal  
-    - Phase 3: CRM + Document Drafting  
+    - Phase 1: Internal AI use
+    - Phase 2: Client Portal
+    - Phase 3: CRM + Document Drafting
     - Phase 4: Analytics Dashboard
     """)

@@ -75,7 +75,7 @@ User Question: {user_question}
                             "answer": reply,
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         })
-                                                st.success("✅ Answer generated below!")
+                        st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
                         # ✅ Clear input field safely

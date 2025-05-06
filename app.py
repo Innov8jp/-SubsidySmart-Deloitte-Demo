@@ -75,12 +75,14 @@ User Question: {user_question}
                             "answer": reply,
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         })
-                        st.success("✅ Answer generated below!")
+                                                st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
-                         if "user_question" in st.session_state:
-    del st.session_state["user_question"]
-    st.experimental_rerun()
+                        # ✅ Clear input field safely
+                        if "user_question" in st.session_state:
+                            del st.session_state["user_question"]
+                            st.experimental_rerun()
+
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")

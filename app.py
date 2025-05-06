@@ -78,8 +78,10 @@ User Question: {user_question}
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
-                        del st.session_state["user_question"]
-                        st.experimental_rerun()
+                         if "user_question" in st.session_state:
+    del st.session_state["user_question"]
+    st.experimental_rerun()
+
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")

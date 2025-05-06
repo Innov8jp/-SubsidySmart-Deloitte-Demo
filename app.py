@@ -1,4 +1,3 @@
-
 import streamlit as st
 import openai
 from datetime import datetime
@@ -78,11 +77,10 @@ User Question: {user_question}
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
-                        # ✅ Clear input field safely
+                        # ✅ Safely clear input and rerun
                         if "user_question" in st.session_state:
                             del st.session_state["user_question"]
                             st.experimental_rerun()
-
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
@@ -92,6 +90,18 @@ User Question: {user_question}
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
         uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"], key="uploaded_file")
 
+        captured_image = st.camera_input("Take a picture of the document (Optional)", key="captured_image")
+        with st.expander("📝 Optional: Score this client"):
+            age = st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
+            industry = st.multiselect("Industry?", ["AI","IT", "IoT", "Biotech", "Green Energy", "Other"])
+            rd_budget = st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
+            export_ready = st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
+            revenue = st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
+            employees = st.slider("Number of employees?", 1, 200, 10)
+            documents = st.multiselect("Documents provided", ["Business Plan","Trial Balance","Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
+
+        if st.button("Get AI Insights & Questions", key="insights_btn"):
+            # ... rest of your AI logic ...
         document_content = None
         if uploaded_file:
             document_content = uploaded_file.read().decode("utf-8")
@@ -105,19 +115,6 @@ User Question: {user_question}
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-You are DeloitteSmart™, an AI assistant. Analyze the client profile and document to:
-1. Suggest 1–2 relevant subsidy programs.
-2. Justify eligibility.
-3. Recommend smart questions to ask the client.
-
-Client Profile:
-{client_profile}
-
-Client Document:
-{document_content if document_content else 'No document uploaded.'}
-"""
-                # === WITH THE NEW, ENHANCED PROMPT BELOW ===
-                prompt = f"""
 You are SubsidySmart™, a highly intelligent Deloitte AI assistant. Your goal is to provide expert-level analysis of client profiles and documents to determine eligibility for Japanese government subsidies. Follow a structured reasoning process:
 
 1. **Analyze Client Profile:** Identify key characteristics of the client (industry, size, goals, etc.).
@@ -126,21 +123,8 @@ You are SubsidySmart™, a highly intelligent Deloitte AI assistant. Your goal i
    - **SME Business Expansion Grant 2025:** Supports SMEs (5-100 employees, <$50M revenue) for new market expansion.
    - **Technology Innovation Support Program 2025:** Funds R&D in AI, IoT, biotech, green energy (3+ years operational history).
    - **Export Development Assistance 2025:** Supports export expansion (>$500K domestic sales).
-4. **Recommend 1-2 most relevant subsidy programs.** For each recommendation, briefly explain *why* the client might be eligible based on the analyzed information.
-5. **Formulate 2-3 insightful follow-up questions** a Deloitte consultant should ask the client to gather more specific details and confirm eligibility.
-
-Present your output in a clear, structured format:
-
-**AI Subsidy Assessment:**
-
-**Recommended Programs:**
-- [Program Name 1]: [Brief justification based on client info]
-- [Program Name 2]: [Brief justification based on client info]
-
-**Follow-Up Questions:**
-- [Question 1]
-- [Question 2]
-- [Question 3]
+4. **Recommend 1-2 most relevant subsidy programs.**
+5. **Formulate 2-3 insightful follow-up questions**
 
 **Client Profile:**
 {client_profile}
@@ -160,8 +144,7 @@ Present your output in a clear, structured format:
                         ai_response = response.choices[0].message.content
                         st.markdown("### AI Insights & Recommendations")
                         st.markdown(ai_response)
-                        st.session_state["initial_ai_response"] = ai_response # Store initial response
-
+                        st.session_state["initial_ai_response"] = ai_response
                     except OpenAIError as e:
                         st.error(f"OpenAI Error: {str(e)}")
 
@@ -199,14 +182,14 @@ Answer this question:
                 else:
                     st.warning("Please enter a question.")
 
-    # --- Optional: Reset Chat Button ---
+    # --- Reset Button ---
     if st.session_state.chat_history:
         if st.button("🔁 Reset Chat"):
             st.session_state.chat_history = []
             st.success("Chat history cleared.")
             st.experimental_rerun()
 
-    # --- Display Chat History ---
+    # --- Chat History Display ---
     if st.session_state.chat_history:
         st.markdown("---")
         st.subheader("Conversation History")

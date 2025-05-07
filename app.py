@@ -3,6 +3,7 @@ import openai
 import fitz  # PyMuPDF
 from datetime import datetime
 from openai import OpenAIError
+import io
 
 # --- CONFIG ---
 st.set_page_config(
@@ -79,7 +80,6 @@ User Question: {user_question}
                         st.markdown(reply)
 
                         st.session_state.user_question = ""
-                        st.rerun()
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
@@ -182,7 +182,6 @@ Question:
         if st.button("🔁 Reset Chat"):
             st.session_state.chat_history = []
             st.success("Chat history cleared.")
-            st.experimental_rerun()
 
     # --- Chat History Display ---
     if st.session_state.chat_history:
@@ -193,6 +192,13 @@ Question:
                 st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
                 st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
                 st.markdown("---")
+
+        # --- Download Chat Button ---
+        if st.button("⬇️ Download Chat History"):
+            history_text = "\n\n".join(
+                [f"[{c['timestamp']}]\nYou: {c['question']}\nAI: {c['answer']}" for c in st.session_state.chat_history]
+            )
+            st.download_button("📄 Download as .txt", data=history_text, file_name="chat_history.txt")
 
 # --- RIGHT COLUMN ---
 with col2:

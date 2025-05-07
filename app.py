@@ -110,7 +110,50 @@ User Question: {user_question}
 
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
-        st.markdown("This feature is currently under enhancement. Please check back soon.")
+        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
+        uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
+
+        document_content = uploaded_file.read().decode("utf-8") if uploaded_file else "No document provided."
+
+        if st.button("Get AI Insights & Questions", key="insights_btn"):
+            if not openai_api_key:
+                st.error("API key missing.")
+            elif not client_profile.strip():
+                st.warning("Please describe the client first.")
+            else:
+                openai.api_key = openai_api_key
+                prompt = f"""
+You are SubsidySmart™, a highly intelligent Deloitte AI assistant. Your goal is to provide expert-level analysis of client profiles and documents to determine eligibility for Japanese government subsidies. Follow a structured reasoning process:
+
+1. **Analyze Client Profile:** Identify key characteristics of the client (industry, size, goals, etc.).
+2. **Analyze Client Document (if provided):** Extract key information related to their business activities, R&D, expansion plans, etc.
+3. **Based on the analysis, consider the following Japanese subsidy programs and their core requirements:**
+   - **SME Business Expansion Grant 2025:** Supports SMEs (5-100 employees, <$50M revenue) for new market expansion.
+   - **Technology Innovation Support Program 2025:** Funds R&D in AI, IoT, biotech, green energy (3+ years operational history).
+   - **Export Development Assistance 2025:** Supports export expansion (>$500K domestic sales).
+4. **Recommend 1-2 most relevant subsidy programs.**
+5. **Formulate 2-3 insightful follow-up questions**
+
+**Client Profile:**
+{client_profile}
+
+**Client Document:**
+{document_content}
+"""
+                with st.spinner("Getting AI Insights & Questions..."):
+                    try:
+                        response = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are a Deloitte subsidy expert."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        ai_response = response.choices[0].message.content
+                        st.markdown("### AI Insights & Recommendations")
+                        st.markdown(ai_response)
+                    except OpenAIError as e:
+                        st.error(f"OpenAI Error: {str(e)}")
 
 # --- FEEDBACK ---
 if st.session_state.get("show_feedback") and st.session_state.chat_history:

@@ -5,6 +5,7 @@ import io
 import json
 from datetime import datetime
 from openai import OpenAIError
+import os
 
 # --- CONFIG ---
 st.set_page_config(
@@ -30,6 +31,8 @@ if "user_question" not in st.session_state:
     st.session_state.user_question = ""
 if "feedback" not in st.session_state:
     st.session_state.feedback = []
+if "show_feedback" not in st.session_state:
+    st.session_state.show_feedback = False
 
 # --- MAIN PAGE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
@@ -73,31 +76,46 @@ User Question: {user_question}
                             ]
                         )
                         reply = response.choices[0].message.content
-                        st.session_state.chat_history.append({
+                        entry = {
                             "question": user_question,
                             "answer": reply,
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        })
+                        }
+                        st.session_state.chat_history.append(entry)
+                        st.session_state.show_feedback = True
+
+                        # Save feedback-ready chat to file
+                        with open("chat_feedback_log.json", "a", encoding="utf-8") as f:
+                            f.write(json.dumps(entry) + "\n")
+
                         st.success("✅ Answer generated below!")
-                        st.markdown(reply)
-
-                        # Feedback buttons
-                        feedback_col1, feedback_col2 = st.columns([1, 1])
-                        with feedback_col1:
-                            if st.button("👍 Yes", key=f"yes_{len(st.session_state.chat_history)}"):
-                                st.session_state.feedback.append({"index": len(st.session_state.chat_history)-1, "helpful": True})
-                                st.success("Thank you for your feedback!")
-                        with feedback_col2:
-                            if st.button("👎 No", key=f"no_{len(st.session_state.chat_history)}"):
-                                st.session_state.feedback.append({"index": len(st.session_state.chat_history)-1, "helpful": False})
-                                st.info("Feedback noted. We'll use it to improve.")
-
-                        if "user_question" in st.session_state:
-                            del st.session_state.user_question
-                        st.rerun()
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
+
+    if st.session_state.get("show_feedback") and st.session_state.chat_history:
+        latest = len(st.session_state.chat_history) - 1
+        st.markdown(st.session_state.chat_history[latest]["answer"])
+        st.write("**Was this helpful?**")
+        col_yes, col_no = st.columns([1, 1])
+        with col_yes:
+            if st.button("👍 Yes", key="yes_feedback"):
+                feedback_entry = {"index": latest, "helpful": True, "timestamp": datetime.now().isoformat()}
+                st.session_state.feedback.append(feedback_entry)
+                with open("feedback_log.json", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(feedback_entry) + "\n")
+                st.session_state.show_feedback = False
+                st.success("Thank you for your feedback!")
+                st.rerun()
+        with col_no:
+            if st.button("👎 No", key="no_feedback"):
+                feedback_entry = {"index": latest, "helpful": False, "timestamp": datetime.now().isoformat()}
+                st.session_state.feedback.append(feedback_entry)
+                with open("feedback_log.json", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(feedback_entry) + "\n")
+                st.session_state.show_feedback = False
+                st.info("Feedback noted. We'll use it to improve.")
+                st.rerun()
 
 # --- Chat History Display ---
 if st.session_state.chat_history:

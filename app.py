@@ -84,7 +84,6 @@ User Question: {user_question}
                         st.session_state.chat_history.append(entry)
                         st.session_state.show_feedback = True
 
-                        # Save feedback-ready chat to file
                         with open("chat_feedback_log.json", "a", encoding="utf-8") as f:
                             f.write(json.dumps(entry) + "\n")
 
@@ -191,6 +190,22 @@ if st.session_state.chat_history:
             if fb:
                 st.caption("📊 Feedback: Helpful" if fb['helpful'] else "📊 Feedback: Not Helpful")
             st.markdown("---")
+
+    col_reset, col_download = st.columns([1, 1])
+    with col_reset:
+        if st.button("🔁 Reset Chat"):
+            st.session_state.chat_history = []
+            st.session_state.feedback = []
+            st.success("Chat history cleared.")
+            st.rerun()
+    with col_download:
+        chat_json = json.dumps(st.session_state.chat_history, indent=2)
+        st.download_button(
+            label="📥 Download Chat History",
+            data=chat_json,
+            file_name="chat_history.json",
+            mime="application/json"
+        )
 
 # --- RIGHT COLUMN ---
 with col2:

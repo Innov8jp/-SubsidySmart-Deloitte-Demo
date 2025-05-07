@@ -40,11 +40,10 @@ col1, col2 = st.columns([3, 1])
 with col1:
     if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
-        input_key = f"user_question_{datetime.now().timestamp()}"
-        user_question = st.text_input("Type your subsidy-related question here:", key=input_key)
+        st.text_input("Type your subsidy-related question here:", key="user_question")
 
         if st.button("Ask Deloitte AI Agent™"):
-            user_question = user_question.strip()
+            user_question = st.session_state.user_question.strip()
 
             if not openai_api_key:
                 st.error("API key missing.")
@@ -79,7 +78,8 @@ User Question: {user_question}
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
-                        st.experimental_rerun()
+                        st.session_state.user_question = ""
+                        st.rerun()
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
@@ -181,8 +181,7 @@ Question:
     if st.session_state.chat_history:
         if st.button("🔁 Reset Chat"):
             st.session_state.chat_history = []
-            st.success("Chat history cleared.")
-            st.experimental_rerun()
+            st.rerun()
 
     # --- Chat History Display ---
     if st.session_state.chat_history:

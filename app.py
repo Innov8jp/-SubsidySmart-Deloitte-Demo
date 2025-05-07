@@ -78,8 +78,8 @@ User Question: {user_question}
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
-                        del st.session_state["user_question"]
-                        st.experimental_rerun()
+                        st.session_state.user_question = ""
+st.rerun()  # Use st.rerun() instead of experimental if using Streamlit v1.31+
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")

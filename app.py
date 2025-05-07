@@ -87,13 +87,17 @@ User Question: {user_question}
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
-        uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"], key="uploaded_file")
+        uploaded_files = st.file_uploader("Upload Client Business Overview(s) (Optional - .txt files)", type=["txt"], accept_multiple_files=True, key="uploaded_files")
         captured_image = st.camera_input("Take a picture of the document (Optional)")
 
-        document_content = None
-        if uploaded_file:
-            document_content = uploaded_file.read().decode("utf-8")
-            st.markdown(f"📄 **Uploaded file:** {uploaded_file.name}")
+       document_content = ""
+if uploaded_files:
+    for file in uploaded_files:
+        content = file.read().decode("utf-8")
+        document_content += f"\n\n--- FILE: {file.name} ---\n{content}"
+    st.markdown("📄 **Uploaded files:**")
+    for file in uploaded_files:
+        st.markdown(f"- {file.name}")
 
         with st.expander("📝 Optional: Score this client"):
             st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)

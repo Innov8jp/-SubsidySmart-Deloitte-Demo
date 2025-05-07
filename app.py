@@ -2,6 +2,7 @@ import streamlit as st
 import openai
 from datetime import datetime
 from openai import OpenAIError
+import fitz  # PyMuPDF for PDF parsing
 
 # --- CONFIG ---
 st.set_page_config(
@@ -20,14 +21,14 @@ with st.sidebar:
     st.markdown("Prototype Version 1.0")
     st.markdown("Secure | Scalable | Smart")
 
-# --- SESSION STATE SETUP ---
+# --- SESSION STATE ---
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if "user_question" not in st.session_state:
     st.session_state.user_question = ""
 
-# --- MAIN PAGE ---
+# --- MAIN PAGE HEADER ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
 st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")
@@ -35,7 +36,7 @@ st.caption("Ask any business subsidy question and get instant expert advice, pow
 mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
 col1, col2 = st.columns([3, 1])
 
-# --- LEFT COLUMN ---
+# --- LEFT PANEL ---
 with col1:
     if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
@@ -43,7 +44,6 @@ with col1:
 
         if st.button("Ask Deloitte AI Agent™"):
             user_question = st.session_state.user_question.strip()
-
             if not openai_api_key:
                 st.error("API key missing.")
             elif not user_question:
@@ -76,47 +76,48 @@ User Question: {user_question}
                         })
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
-
-                        if "user_question" in st.session_state:
-                            del st.session_state["user_question"]
-                            st.experimental_rerun()
-
+                        del st.session_state["user_question"]
+                        st.experimental_rerun()
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
 
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
-        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
-        uploaded_files = st.file_uploader("Upload Client Business Overview(s) (Optional - .txt files)", type=["txt"], accept_multiple_files=True, key="uploaded_files")
-        captured_image = st.camera_input("Take a picture of the document (Optional)")
-
-               uploaded_files = st.file_uploader(
-            "Upload Client Business Overview(s) (Optional - .txt files)",
-            type=["txt"],
-            accept_multiple_files=True,
-            key="uploaded_files"
+        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):")
+        uploaded_files = st.file_uploader(
+            "Upload Client Business Overview(s) (.txt or .pdf)", 
+            type=["txt", "pdf"], 
+            accept_multiple_files=True
         )
+        captured_image = st.camera_input("Take a picture of the document (Optional)")
 
         document_content = ""
         if uploaded_files:
             for file in uploaded_files:
-                content = file.read().decode("utf-8")
-                document_content += f"\n\n--- FILE: {file.name} ---\n{content}"
-            st.markdown("📄 **Uploaded files:**")
+                if file.name.endswith(".pdf"):
+                    pdf = fitz.open(stream=file.read(), filetype="pdf")
+                    text = "\n".join([page.get_text() for page in pdf])
+                else:
+                    text = file.read().decode("utf-8")
+                document_content += f"\n\n--- FILE: {file.name} ---\n{text}"
+
+            st.markdown("📄 **Uploaded Files:**")
             for file in uploaded_files:
                 st.markdown(f"- {file.name}")
 
-
         with st.expander("📝 Optional: Score this client"):
-            st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
+            st.radio("Company age?", ["< 3 years", "≥ 3 years"])
             st.multiselect("Industry?", ["AI", "IT", "IoT", "Biotech", "Green Energy", "Other"])
-            st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
-            st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
-            st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
+            st.radio("R&D budget per year?", ["< $200K", "≥ $200K"])
+            st.radio("Exporting or planning to export?", ["No", "Yes"])
+            st.radio("Annual revenue?", ["< $500K", "≥ $500K"])
             st.slider("Number of employees?", 1, 200, 10)
-            st.multiselect("Documents provided", ["Business Plan", "Trial Balance", "Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
+            st.multiselect("Documents provided", [
+                "Business Plan", "Trial Balance", "Annual Return", 
+                "Org Chart", "Budget", "Export Plan", "Pitch Deck"
+            ])
 
-        if st.button("Get AI Insights & Questions", key="insights_btn"):
+        if st.button("Get AI Insights & Questions"):
             if not openai_api_key:
                 st.error("API key missing.")
             elif not client_profile.strip():
@@ -124,21 +125,15 @@ User Question: {user_question}
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-You are SubsidySmart™, a highly intelligent Deloitte AI assistant. Your goal is to provide expert-level analysis of client profiles and documents to determine eligibility for Japanese government subsidies. Follow a structured reasoning process:
+You are SubsidySmart™, a Deloitte-trained AI assistant. Analyze the client profile and document to:
+1. Suggest 1–2 relevant subsidy programs.
+2. Justify eligibility.
+3. Recommend 2-3 follow-up questions.
 
-1. **Analyze Client Profile:** Identify key characteristics of the client (industry, size, goals, etc.).
-2. **Analyze Client Document (if provided):** Extract key information related to their business activities, R&D, expansion plans, etc.
-3. **Based on the analysis, consider the following Japanese subsidy programs and their core requirements:**
-   - **SME Business Expansion Grant 2025:** Supports SMEs (5-100 employees, <$50M revenue) for new market expansion.
-   - **Technology Innovation Support Program 2025:** Funds R&D in AI, IoT, biotech, green energy (3+ years operational history).
-   - **Export Development Assistance 2025:** Supports export expansion (>$500K domestic sales).
-4. **Recommend 1-2 most relevant subsidy programs.**
-5. **Formulate 2-3 insightful follow-up questions**
-
-**Client Profile:**
+Client Profile:
 {client_profile}
 
-**Client Document:**
+Client Document:
 {'[START DOCUMENT]' + document_content + '[END DOCUMENT]' if document_content else 'No document provided.'}
 """
                 with st.spinner("Getting AI Insights & Questions..."):
@@ -146,21 +141,20 @@ You are SubsidySmart™, a highly intelligent Deloitte AI assistant. Your goal i
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
-                                {"role": "system", "content": "You are an expert Deloitte subsidy consultant providing detailed eligibility assessments."},
+                                {"role": "system", "content": "You are an expert Deloitte subsidy consultant."},
                                 {"role": "user", "content": prompt}
                             ]
                         )
                         ai_response = response.choices[0].message.content
                         st.markdown("### AI Insights & Recommendations")
                         st.markdown(ai_response)
-                        st.session_state["initial_ai_response"] = ai_response
                     except OpenAIError as e:
                         st.error(f"OpenAI Error: {str(e)}")
 
-        if uploaded_file:
+        if uploaded_files:
             st.subheader("Ask Questions About the Document")
-            followup_question = st.text_input("Type your question about the uploaded document here:", key="followup_question")
-            if st.button("Ask AI About Document", key="followup_btn"):
+            followup_question = st.text_input("Type your question about the uploaded document here:")
+            if st.button("Ask AI About Document"):
                 if followup_question:
                     question_prompt = f"""
 You are an AI assistant. Based ONLY on the following:
@@ -198,7 +192,7 @@ Answer this question:
             st.success("Chat history cleared.")
             st.experimental_rerun()
 
-    # --- Chat History Display ---
+    # --- Chat History ---
     if st.session_state.chat_history:
         st.markdown("---")
         st.subheader("Conversation History")
@@ -208,7 +202,7 @@ Answer this question:
                 st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
                 st.markdown("---")
 
-# --- RIGHT COLUMN ---
+# --- RIGHT PANEL ---
 with col2:
     st.subheader("ℹ️ Assistant Overview")
     st.markdown("""

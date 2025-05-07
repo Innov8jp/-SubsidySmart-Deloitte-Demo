@@ -93,6 +93,10 @@ User Question: {user_question}
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
 
+    elif mode == "Deloitte-Asks":
+        st.subheader("Get Smart Questions to Ask Your Client")
+        st.info("This feature is currently under enhancement. Please check back soon.")
+
     # --- Feedback Analytics ---
     with st.expander("📊 View Feedback Analytics"):
         if os.path.exists("feedback_log.json"):

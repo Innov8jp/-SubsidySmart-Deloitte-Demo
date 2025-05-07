@@ -95,7 +95,53 @@ User Question: {user_question}
 
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
-        st.info("This feature is currently under enhancement. Please check back soon.")
+        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
+        uploaded_file = st.file_uploader("Upload Client Business Overview (.txt)", type=["txt"], key="uploaded_file")
+
+        document_content = None
+        if uploaded_file:
+            document_content = uploaded_file.read().decode("utf-8")
+            st.markdown(f"📄 **Uploaded file:** {uploaded_file.name}")
+
+        if st.button("Get AI Insights & Questions", key="insights_btn"):
+            if not openai_api_key:
+                st.error("API key missing.")
+            elif not client_profile.strip():
+                st.warning("Please describe the client first.")
+            else:
+                openai.api_key = openai_api_key
+                prompt = f"""
+You are SubsidySmart™, a Deloitte-trained AI assistant. Analyze the profile and suggest relevant Japanese subsidy programs and follow-up questions.
+
+Client Profile:
+{client_profile}
+
+Client Document:
+{document_content if document_content else 'No document provided.'}
+"""
+                with st.spinner("Getting AI Insights & Questions..."):
+                    try:
+                        response = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are a Deloitte subsidy expert."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        ai_response = response.choices[0].message.content
+                        st.markdown("### AI Insights & Recommendations")
+                        st.markdown(ai_response)
+                        st.session_state.show_feedback = True
+
+                        with open("chat_feedback_log.json", "a", encoding="utf-8") as f:
+                            f.write(json.dumps({
+                                "question": client_profile,
+                                "answer": ai_response,
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }) + "\n")
+
+                    except OpenAIError as e:
+                        st.error(f"OpenAI Error: {str(e)}")
 
     # --- Feedback Analytics ---
     with st.expander("📊 View Feedback Analytics"):

@@ -1,8 +1,8 @@
 import streamlit as st
 import openai
+import fitz  # PyMuPDF
 from datetime import datetime
 from openai import OpenAIError
-import fitz  # PyMuPDF for PDF parsing
 
 # --- CONFIG ---
 st.set_page_config(
@@ -21,14 +21,14 @@ with st.sidebar:
     st.markdown("Prototype Version 1.0")
     st.markdown("Secure | Scalable | Smart")
 
-# --- SESSION STATE ---
+# --- SESSION STATE SETUP ---
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if "user_question" not in st.session_state:
     st.session_state.user_question = ""
 
-# --- MAIN PAGE HEADER ---
+# --- MAIN PAGE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
 st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")
@@ -36,7 +36,7 @@ st.caption("Ask any business subsidy question and get instant expert advice, pow
 mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
 col1, col2 = st.columns([3, 1])
 
-# --- LEFT PANEL ---
+# --- LEFT COLUMN ---
 with col1:
     if mode == "Client-Asks (Default)":
         st.subheader("Ask Your Question")
@@ -44,6 +44,7 @@ with col1:
 
         if st.button("Ask Deloitte AI Agent™"):
             user_question = st.session_state.user_question.strip()
+
             if not openai_api_key:
                 st.error("API key missing.")
             elif not user_question:
@@ -76,48 +77,41 @@ User Question: {user_question}
                         })
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
+
                         del st.session_state["user_question"]
                         st.experimental_rerun()
+
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
 
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
-        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):")
-        uploaded_files = st.file_uploader(
-            "Upload Client Business Overview(s) (.txt or .pdf)", 
-            type=["txt", "pdf"], 
-            accept_multiple_files=True
-        )
+        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
+        uploaded_files = st.file_uploader("Upload Client Business Overview(s) (.txt or .pdf)", type=["txt", "pdf"], accept_multiple_files=True)
         captured_image = st.camera_input("Take a picture of the document (Optional)")
 
         document_content = ""
         if uploaded_files:
             for file in uploaded_files:
-                if file.name.endswith(".pdf"):
+                file_type = file.type
+                if file_type == "application/pdf":
                     pdf = fitz.open(stream=file.read(), filetype="pdf")
-                    text = "\n".join([page.get_text() for page in pdf])
+                    for page in pdf:
+                        document_content += page.get_text()
                 else:
-                    text = file.read().decode("utf-8")
-                document_content += f"\n\n--- FILE: {file.name} ---\n{text}"
-
-            st.markdown("📄 **Uploaded Files:**")
-            for file in uploaded_files:
-                st.markdown(f"- {file.name}")
+                    content = file.read().decode("utf-8")
+                    document_content += f"\n\n--- FILE: {file.name} ---\n{content}"
 
         with st.expander("📝 Optional: Score this client"):
-            st.radio("Company age?", ["< 3 years", "≥ 3 years"])
+            st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
             st.multiselect("Industry?", ["AI", "IT", "IoT", "Biotech", "Green Energy", "Other"])
-            st.radio("R&D budget per year?", ["< $200K", "≥ $200K"])
-            st.radio("Exporting or planning to export?", ["No", "Yes"])
-            st.radio("Annual revenue?", ["< $500K", "≥ $500K"])
+            st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
+            st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
+            st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
             st.slider("Number of employees?", 1, 200, 10)
-            st.multiselect("Documents provided", [
-                "Business Plan", "Trial Balance", "Annual Return", 
-                "Org Chart", "Budget", "Export Plan", "Pitch Deck"
-            ])
+            st.multiselect("Documents provided", ["Business Plan", "Trial Balance", "Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
 
-        if st.button("Get AI Insights & Questions"):
+        if st.button("Get AI Insights & Questions", key="insights_btn"):
             if not openai_api_key:
                 st.error("API key missing.")
             elif not client_profile.strip():
@@ -125,39 +119,37 @@ User Question: {user_question}
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-You are SubsidySmart™, a Deloitte-trained AI assistant. Analyze the client profile and document to:
-1. Suggest 1–2 relevant subsidy programs.
-2. Justify eligibility.
-3. Recommend 2-3 follow-up questions.
+You are SubsidySmart™, a Deloitte-trained AI assistant. Analyze the profile below and extract key information. Based on that, recommend relevant Japanese subsidy programs and insightful follow-up questions.
 
 Client Profile:
 {client_profile}
 
-Client Document:
-{'[START DOCUMENT]' + document_content + '[END DOCUMENT]' if document_content else 'No document provided.'}
+Client Documents:
+{document_content if document_content else 'No document provided.'}
 """
                 with st.spinner("Getting AI Insights & Questions..."):
                     try:
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
-                                {"role": "system", "content": "You are an expert Deloitte subsidy consultant."},
+                                {"role": "system", "content": "You are a Deloitte subsidy expert."},
                                 {"role": "user", "content": prompt}
                             ]
                         )
                         ai_response = response.choices[0].message.content
                         st.markdown("### AI Insights & Recommendations")
                         st.markdown(ai_response)
+                        st.session_state["initial_ai_response"] = ai_response
                     except OpenAIError as e:
                         st.error(f"OpenAI Error: {str(e)}")
 
         if uploaded_files:
             st.subheader("Ask Questions About the Document")
-            followup_question = st.text_input("Type your question about the uploaded document here:")
-            if st.button("Ask AI About Document"):
+            followup_question = st.text_input("Type your question about the uploaded document here:", key="followup_question")
+            if st.button("Ask AI About Document", key="followup_btn"):
                 if followup_question:
                     question_prompt = f"""
-You are an AI assistant. Based ONLY on the following:
+Based ONLY on the following client profile and document, answer the question.
 
 Client Profile:
 {client_profile}
@@ -165,7 +157,7 @@ Client Profile:
 Client Document:
 {document_content}
 
-Answer this question:
+Question:
 {followup_question}
 """
                     with st.spinner("Getting answer..."):
@@ -192,7 +184,7 @@ Answer this question:
             st.success("Chat history cleared.")
             st.experimental_rerun()
 
-    # --- Chat History ---
+    # --- Chat History Display ---
     if st.session_state.chat_history:
         st.markdown("---")
         st.subheader("Conversation History")
@@ -202,7 +194,7 @@ Answer this question:
                 st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
                 st.markdown("---")
 
-# --- RIGHT PANEL ---
+# --- RIGHT COLUMN ---
 with col2:
     st.subheader("ℹ️ Assistant Overview")
     st.markdown("""

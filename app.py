@@ -91,12 +91,12 @@ User Question: {user_question}
         captured_image = st.camera_input("Take a picture of the document (Optional)")
 
        document_content = ""
-if uploaded_files:
-    for file in uploaded_files:
+        if uploaded_files:
+          for file in uploaded_files:
         content = file.read().decode("utf-8")
         document_content += f"\n\n--- FILE: {file.name} ---\n{content}"
-    st.markdown("📄 **Uploaded files:**")
-    for file in uploaded_files:
+        st.markdown("📄 **Uploaded files:**")
+          for file in uploaded_files:
         st.markdown(f"- {file.name}")
 
         with st.expander("📝 Optional: Score this client"):

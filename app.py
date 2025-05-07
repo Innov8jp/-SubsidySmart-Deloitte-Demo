@@ -1,3 +1,4 @@
+
 import streamlit as st
 import openai
 import fitz  # PyMuPDF
@@ -79,7 +80,6 @@ User Question: {user_question}
                         })
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
-
                         if "user_question" in st.session_state:
                             del st.session_state.user_question
                         st.rerun()
@@ -93,9 +93,9 @@ User Question: {user_question}
         uploaded_files = st.file_uploader("Upload Client Business Overview(s) (.txt or .pdf)", type=["txt", "pdf"], accept_multiple_files=True)
         enable_camera = st.checkbox("📷 Enable Camera Input")
 
-captured_image = None
-if enable_camera:
-    captured_image = st.camera_input("Take a picture of the document (Optional)")
+        captured_image = None
+        if enable_camera:
+            captured_image = st.camera_input("Take a picture of the document (Optional)")
 
         document_content = ""
         if uploaded_files:
@@ -184,31 +184,31 @@ Question:
                 else:
                     st.warning("Please enter a question.")
 
-    # --- Reset and Download Buttons ---
-    if st.session_state.chat_history:
-        col_reset, col_download = st.columns([1, 1])
-        with col_reset:
-            if st.button("🔁 Reset Chat"):
-                st.session_state.chat_history = []
-                st.rerun()
-        with col_download:
-            chat_json = json.dumps(st.session_state.chat_history, indent=2)
-            st.download_button(
-                label="📥 Download Chat History",
-                data=chat_json,
-                file_name="chat_history.json",
-                mime="application/json"
-            )
+# --- Reset and Download Buttons ---
+if st.session_state.chat_history:
+    col_reset, col_download = st.columns([1, 1])
+    with col_reset:
+        if st.button("🔁 Reset Chat"):
+            st.session_state.chat_history = []
+            st.rerun()
+    with col_download:
+        chat_json = json.dumps(st.session_state.chat_history, indent=2)
+        st.download_button(
+            label="📥 Download Chat History",
+            data=chat_json,
+            file_name="chat_history.json",
+            mime="application/json"
+        )
 
-    # --- Chat History Display ---
-    if st.session_state.chat_history:
-        st.markdown("---")
-        st.subheader("Conversation History")
-        for chat in reversed(st.session_state.chat_history):
-            with st.container():
-                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
-                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-                st.markdown("---")
+# --- Chat History Display ---
+if st.session_state.chat_history:
+    st.markdown("---")
+    st.subheader("Conversation History")
+    for chat in reversed(st.session_state.chat_history):
+        with st.container():
+            st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
+            st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
+            st.markdown("---")
 
 # --- RIGHT COLUMN ---
 with col2:

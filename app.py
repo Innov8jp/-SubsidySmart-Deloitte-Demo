@@ -78,7 +78,9 @@ User Question: {user_question}
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
-                        st.session_state.user_question = ""
+                        # Remove the key safely before rerun
+                        if "user_question" in st.session_state:
+                            del st.session_state.user_question
                         st.rerun()
 
                     except OpenAIError as e:

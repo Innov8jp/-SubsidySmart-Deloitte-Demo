@@ -101,7 +101,6 @@ User Question: {user_question}
             documents = st.multiselect("Documents provided", ["Business Plan","Trial Balance","Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
 
         if st.button("Get AI Insights & Questions", key="insights_btn"):
-            # ... rest of your AI logic ...
         document_content = None
         if uploaded_file:
             document_content = uploaded_file.read().decode("utf-8")

@@ -77,7 +77,6 @@ User Question: {user_question}
                         st.success("✅ Answer generated below!")
                         st.markdown(reply)
 
-                        # ✅ Safely clear input and rerun
                         if "user_question" in st.session_state:
                             del st.session_state["user_question"]
                             st.experimental_rerun()
@@ -89,22 +88,21 @@ User Question: {user_question}
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
         uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"], key="uploaded_file")
+        captured_image = st.camera_input("Take a picture of the document (Optional)")
 
-        captured_image = st.camera_input("Take a picture of the document (Optional)", key="captured_image")
-        with st.expander("📝 Optional: Score this client"):
-            age = st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
-            industry = st.multiselect("Industry?", ["AI","IT", "IoT", "Biotech", "Green Energy", "Other"])
-            rd_budget = st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
-            export_ready = st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
-            revenue = st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
-            employees = st.slider("Number of employees?", 1, 200, 10)
-            documents = st.multiselect("Documents provided", ["Business Plan","Trial Balance","Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
-
-        if st.button("Get AI Insights & Questions", key="insights_btn"):
         document_content = None
         if uploaded_file:
             document_content = uploaded_file.read().decode("utf-8")
             st.markdown(f"📄 **Uploaded file:** {uploaded_file.name}")
+
+        with st.expander("📝 Optional: Score this client"):
+            st.radio("Company age?", ["< 3 years", "≥ 3 years"], index=0)
+            st.multiselect("Industry?", ["AI", "IT", "IoT", "Biotech", "Green Energy", "Other"])
+            st.radio("R&D budget per year?", ["< $200K", "≥ $200K"], index=0)
+            st.radio("Exporting or planning to export?", ["No", "Yes"], index=0)
+            st.radio("Annual revenue?", ["< $500K", "≥ $500K"], index=0)
+            st.slider("Number of employees?", 1, 200, 10)
+            st.multiselect("Documents provided", ["Business Plan", "Trial Balance", "Annual Return", "Org Chart", "Budget", "Export Plan", "Pitch Deck"])
 
         if st.button("Get AI Insights & Questions", key="insights_btn"):
             if not openai_api_key:

@@ -91,7 +91,12 @@ User Question: {user_question}
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
         uploaded_files = st.file_uploader("Upload Client Business Overview(s) (.txt or .pdf)", type=["txt", "pdf"], accept_multiple_files=True)
-        captured_image = st.camera_input("Take a picture of the document (Optional)")
+        show_camera = st.toggle("📷 Enable Camera Input")
+
+if show_camera:
+    captured_image = st.camera_input("Take a picture of the document (Optional)")
+else:
+    captured_image = None
 
         document_content = ""
         if uploaded_files:

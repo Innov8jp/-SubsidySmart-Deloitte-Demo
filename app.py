@@ -79,7 +79,7 @@ User Question: {user_question}
                         st.markdown(reply)
 
                         st.session_state.user_question = ""
-                        st.rerun() 
+                        st.experimental_rerun()  
 
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")

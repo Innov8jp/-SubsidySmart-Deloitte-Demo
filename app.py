@@ -48,6 +48,8 @@ if "feedback" not in st.session_state:
     st.session_state.feedback = []
 if "show_feedback" not in st.session_state:
     st.session_state.show_feedback = False
+if "enable_camera" not in st.session_state:
+    st.session_state.enable_camera = False
 
 # --- MAIN PAGE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
@@ -113,9 +115,8 @@ User Question: {user_question}
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
         uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
 
-        st.markdown("\n---\n")
-        st.markdown("**Camera Capture (Optional)**")
-        captured_image = st.camera_input("Take a picture")
+        st.session_state.enable_camera = st.toggle("📷 Enable Camera Input", key="enable_camera_toggle")
+        captured_image = st.camera_input("Take a picture", key="camera") if st.session_state.enable_camera else None
 
         document_content = uploaded_file.read().decode("utf-8") if uploaded_file else "No document provided."
 

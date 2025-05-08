@@ -54,7 +54,7 @@ if "enable_camera" not in st.session_state:
 # --- MAIN PAGE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
-st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")
+st.caption("Ask any business domain specific question and get instant expert advice, powered by Deloitte AI Agent.")
 
 mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
 col1, col2 = st.columns([3, 1])

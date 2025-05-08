@@ -113,6 +113,10 @@ User Question: {user_question}
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
         uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
 
+        st.markdown("\n---\n")
+        st.markdown("**Camera Capture (Optional)**")
+        captured_image = st.camera_input("Take a picture")
+
         document_content = uploaded_file.read().decode("utf-8") if uploaded_file else "No document provided."
 
         if st.button("Get AI Insights & Questions", key="insights_btn"):
@@ -185,7 +189,7 @@ if st.session_state.chat_history:
     st.subheader("Conversation History")
     for i, chat in enumerate(reversed(st.session_state.chat_history)):
         with st.container():
-            st.markdown(f"**🧑‍💻 You ({chat['timestamp']}):** {chat['question']}")
+            st.markdown(f"**🧑‍💼 You ({chat['timestamp']}):** {chat['question']}")
             st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
             fb = next((f for f in st.session_state.feedback if f['index'] == len(st.session_state.chat_history)-1-i), None)
             if fb:
@@ -202,7 +206,7 @@ if st.session_state.chat_history:
     with col_download:
         chat_json = json.dumps(st.session_state.chat_history, indent=2)
         st.download_button(
-            label="📥 Download Chat History",
+            label="📅 Download Chat History",
             data=chat_json,
             file_name="chat_history.json",
             mime="application/json"
@@ -212,9 +216,9 @@ if st.session_state.chat_history:
 with col2:
     st.subheader("ℹ️ Assistant Overview")
     st.markdown("""
-✅ Real-time subsidy advice  
-✅ Smart scoring system  
-✅ Ready for CRM + Drafting  
+📅 Real-time subsidy advice  
+🔄 Smart scoring system  
+📝 Ready for CRM + Drafting  
 """)
     st.subheader("📈 Deloitte Roadmap")
     st.markdown("""

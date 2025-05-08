@@ -215,13 +215,13 @@ if st.session_state.chat_history:
 
 # --- RIGHT COLUMN ---
 with col2:
-    st.subheader("ℹ️ Assistant Overview")
+    st.subheader("Assistant Overview")
     st.markdown("""
 📅 Real-time subsidy advice  
 🔄 Smart scoring system  
 📝 Ready for CRM + Drafting  
 """)
-    st.subheader("📈 Deloitte Roadmap")
+    st.subheader("Deloitte Roadmap")
     st.markdown("""
 - Phase 1: Internal AI Assistant  
 - Phase 2: Client Portal  

@@ -220,9 +220,6 @@ with col2:
 📅 Real-time subsidy advice  
 🔄 Smart scoring system  
 📝 Ready for CRM + Drafting  
-📷	Camera Upload- Utility-Based AI Agent
-🔎	Smart Matching
-📄	OCR/Text Extraction-
 """)
     st.subheader("Deloitte Roadmap")
     st.markdown("""

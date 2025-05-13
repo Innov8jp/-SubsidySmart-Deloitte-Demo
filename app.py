@@ -112,6 +112,8 @@ if st.session_state.document_content:
         combined_docs = "
 
 ".join(st.session_state.document_content.values())
+
+".join(st.session_state.document_content.values())
         prompt = f"""
 Refer to the following uploaded documents and answer the question below:
 

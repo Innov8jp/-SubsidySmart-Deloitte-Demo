@@ -101,41 +101,44 @@ if st.session_state.document_summary:
 
 # --- CONTINUED QUESTION INPUT ---
 if st.session_state.document_content:
-    st.subheader("🔍 Ask More Questions About the Documents")
-    question_input = st.text_input("Your follow-up question:", placeholder="e.g., Which subsidy fits best for export growth?", key="user_question_input")
-    if st.button("Ask AI"):
+    st.subheader("💬 Chat with DeloitteSmart™ AI")
+    with st.form(key="chat_form"):
+        question_input = st.text_input("Ask your question:", placeholder="e.g., What subsidy best suits an AI startup?")
+        submit_button = st.form_submit_button(label="Send")
+
+    if submit_button and question_input.strip():
         question = question_input.strip()
-        if question:
-            openai.api_key = openai_api_key
-            all_docs_combined = "\n\n".join(st.session_state.document_content.values())
-            prompt = f"""
+        openai.api_key = openai_api_key
+        combined_docs = "
+
+".join(st.session_state.document_content.values())
+        prompt = f"""
 Refer to the following uploaded documents and answer the question below:
 
 Document Content:
-{all_docs_combined}
+{combined_docs}
 
 User Question:
 {question}
 """
-            try:
-                response = openai.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a Deloitte AI assistant."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                reply = response.choices[0].message.content
-                entry = {
-                    "question": question,
-                    "answer": reply,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                st.session_state.chat_history.append(entry)
-                st.session_state.show_feedback = True
-                # Note: Resetting input this way causes a Streamlit error. Removing to avoid conflict.
-            except Exception as e:
-                st.error(f"AI response error: {str(e)}")
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a Deloitte AI assistant."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            reply = response.choices[0].message.content
+            st.session_state.chat_history.append({
+                "question": question,
+                "answer": reply,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            st.session_state.show_feedback = True
+            st.success("✅ Response added to chat.")
+        except Exception as e:
+            st.error(f"AI response error: {str(e)}")
 
 # --- DISPLAY CHAT HISTORY ---
 if st.session_state.chat_history:

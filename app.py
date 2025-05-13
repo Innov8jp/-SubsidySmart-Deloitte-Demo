@@ -116,7 +116,7 @@ if captured_image:
 # --- CONTINUED QUESTION INPUT ---
 combined_docs = "
 
-".join(st.session_state.document_content.values())
+".join(st.session_state.document_content.values()).join(st.session_state.document_content.values())
 
 # --- DOWNLOAD CHAT REPORT ---
 if st.session_state.chat_history and st.session_state.document_summary:

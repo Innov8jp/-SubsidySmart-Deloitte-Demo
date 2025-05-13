@@ -140,5 +140,50 @@ User Question: {user_question}
                     except OpenAIError as e:
                         st.error(f"OpenAI API Error: {str(e)}")
 
+# --- DELOITTE ASKS ---
+    elif mode == "Deloitte-Asks":
+        st.subheader("Get Smart Questions to Ask Your Client" if language == "English" else "クライアントに尋ねるべきスマートな質問")
+        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):" if language == "English" else "クライアントの情報を記述してください（業種、規模、目標など）：", key="client_profile")
+
+        st.session_state.enable_camera = st.toggle("📷 Enable Camera Input" if language == "English" else "📷 カメラ入力を有効にする", key="enable_camera_toggle")
+        captured_image = st.camera_input("Take a picture" if language == "English" else "写真を撮る", key="camera") if st.session_state.enable_camera else None
+
+        insights_btn_label = "Get AI Insights & Questions" if language == "English" else "AIによる分析と質問を取得"
+        if st.button(insights_btn_label):
+            if not openai_api_key:
+                st.error("API key missing." if language == "English" else "APIキーが設定されていません。")
+            elif not client_profile.strip():
+                st.warning("Please describe the client first." if language == "English" else "まずクライアント情報を記述してください。")
+            else:
+                openai.api_key = openai_api_key
+                prompt = f"""
+You are SubsidySmart™, a Deloitte AI assistant. Analyze the following:
+
+1. Client Profile
+2. Uploaded Documents
+3. Recommend 1-2 relevant subsidy programs.
+4. Ask 2-3 insightful follow-up questions.
+
+Client Profile:
+{client_profile}
+
+Client Document:
+{st.session_state.document_content}
+"""
+                with st.spinner("Getting AI Insights & Questions..." if language == "English" else "AIによる分析と質問を取得中..."):
+                    try:
+                        response = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are a Deloitte subsidy expert."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        ai_response = response.choices[0].message.content
+                        st.markdown("### AI Insights & Recommendations" if language == "English" else "### AIによる分析と推奨")
+                        st.markdown(ai_response)
+                    except OpenAIError as e:
+                        st.error(f"OpenAI API Error: {str(e)}")
+
 # --- (rest of the Deloitte-Asks logic and UI elements remain unchanged) ---
 # (If needed, this section can also be localized similarly)

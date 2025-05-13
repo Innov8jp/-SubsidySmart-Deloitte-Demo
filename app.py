@@ -103,13 +103,3 @@ if st.session_state.document_summary:
 combined_docs = "
 
 ".join(st.session_state.document_content.values())
-if st.session_state.document_content:
-    st.subheader("💬 Chat with DeloitteSmart™ AI")
-    with st.form(key="chat_form"):
-        question_input = st.text_input("Ask your question:", placeholder="e.g., What subsidy best suits an AI startup?")
-        submit_button = st.form_submit_button(label="Send")
-
-    if submit_button and question_input.strip():
-        question = question_input.strip()
-        openai.api_key = openai_api_key
-        # 🛠 Removed buggy feature: combined_docs = ...

@@ -19,7 +19,66 @@ st.set_page_config(
 )
 
 # --- LANGUAGE TOGGLE ---
-language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
+language_options = ["English", "日本語"]
+language = st.sidebar.radio("🌐 Language / 言語", language_options, index=language_options.index(st.session_state.get("language", "English")))
+st.session_state["language"] = language
+
+# --- TEXT CONTENT DICTIONARY ---
+language_dict = {
+    "English": {
+        "title": "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
+        "upload_expander": "📁 Upload Documents (PDF, TXT)",
+        "upload_button": "Upload Files",
+        "summaries_subheader": "📄 Summaries & Smart Questions",
+        "camera_subheader": "📸 Capture Image for Testing (Demo Only)",
+        "camera_input": "Take a picture",
+        "camera_info": "✅ Image captured. In this demo version, OCR is not applied.",
+        "camera_success": "✅ Demo summary and questions have been added from captured image.",
+        "ask_subheader": "Ask Your Question",
+        "ask_input_label": "Ask anything about the uploaded documents...",
+        "ask_button": "Ask",
+        "deloitte_asks_subheader": "Get Smart Questions to Ask Your Client",
+        "client_profile_label": "Describe the client (industry, size, goal, etc.):",
+        "client_overview_upload_label": "Upload Client Business Overview (Optional - .txt file)",
+        "insights_button": "Get AI Insights & Questions",
+        "ai_insights_subheader": "### AI Insights & Recommendations",
+        "chat_history_subheader": "💬 Chat History",
+        "reset_chat_button": "🔁 Reset Chat",
+        "download_chat_button": "📅 Download Chat History",
+        "download_report_subheader": "⬇️ Download Full Chat Report",
+        "download_report_link": "📄 Download Full Report",
+        "mode_selection_header": "### Mode Selection and Camera Toggle",
+        "mode_radio_label": "Choose interaction mode:",
+    },
+    "日本語": {
+        "title": "DeloitteSmart™: より迅速でスマートな意思決定のためのAIアシスタント",
+        "upload_expander": "📁 ドキュメントをアップロード (PDF, TXT)",
+        "upload_button": "ファイルをアップロード",
+        "summaries_subheader": "📄 概要とスマートな質問",
+        "camera_subheader": "📸 テスト用の画像をキャプチャ (デモのみ)",
+        "camera_input": "写真を撮る",
+        "camera_info": "✅ 画像をキャプチャしました。このデモ版では、OCRは適用されません。",
+        "camera_success": "✅ デモの概要と質問がキャプチャされた画像から追加されました。",
+        "ask_subheader": "質問する",
+        "ask_input_label": "アップロードしたドキュメントについて何でも質問してください...",
+        "ask_button": "質問",
+        "deloitte_asks_subheader": "クライアントに尋ねるべきスマートな質問を入手",
+        "client_profile_label": "クライアントについて説明してください (業界、規模、目標など):",
+        "client_overview_upload_label": "クライアントの事業概要をアップロード (任意 - .txtファイル)",
+        "insights_button": "AIの洞察と質問を取得",
+        "ai_insights_subheader": "### AIによる洞察と推奨事項",
+        "chat_history_subheader": "💬 チャット履歴",
+        "reset_chat_button": "🔁 チャットをリセット",
+        "download_chat_button": "📅 チャット履歴をダウンロード",
+        "download_report_subheader": "⬇️ 完全なチャットレポートをダウンロード",
+        "download_report_link": "📄 完全なレポートをダウンロード",
+        "mode_selection_header": "### モード選択とカメラの切り替え",
+        "mode_radio_label": "インタラクションモードを選択:",
+    },
+}
+
+def get_text(key):
+    return language_dict.get(st.session_state.get("language", "English"), language_dict["English"]).get(key, key)
 
 # --- SIDEBAR ---
 st.sidebar.image("deloitte_logo.png", width=200)

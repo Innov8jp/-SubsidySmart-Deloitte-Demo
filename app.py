@@ -141,6 +141,7 @@ if mode == "Client-Asks (Default)":
             all_text = "
 
 ".join(st.session_state.document_content.values())
+".join(st.session_state.document_content.values())
             if not all_text.strip():
                 st.warning("Please upload documents before asking questions.")
             elif not openai_api_key:

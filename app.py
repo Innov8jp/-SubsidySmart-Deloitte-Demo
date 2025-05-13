@@ -1,4 +1,3 @@
-
 # DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Camera OCR, Persistent Chat, Feedback, Downloadable Report)
 
 import streamlit as st
@@ -44,6 +43,15 @@ for key, default in session_defaults.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
+# --- TOP OPTIONS ---
+st.markdown("### Mode Selection and Camera Toggle")
+col_mode, col_camera = st.columns([3, 1])
+with col_mode:
+    mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
+    st.session_state.selected_mode = mode
+with col_camera:
+    enable_camera = st.toggle("📸 Enable Camera", value=False)
+
 # --- TITLE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 
@@ -85,6 +93,27 @@ with st.expander("📁 Upload Documents (PDF, TXT)"):
                     except Exception as e:
                         st.error(f"Summary generation error for {filename}: {str(e)}")
 
+# --- CAMERA INPUT (Demo Version) ---
+if enable_camera:
+    st.subheader("📸 Capture Image for Testing (Demo Only)")
+    captured_image = st.camera_input("Take a picture")
+    if captured_image:
+        st.image(captured_image, caption="Captured Image", use_column_width=True)
+        st.info("✅ Image captured. In this demo version, OCR is not applied.")
+        dummy_text = "Thank you for uploading a photo. In the full version, text would be extracted and summarized here."
+        cam_doc_name = f"camera_demo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        st.session_state.document_content[cam_doc_name] = dummy_text
+        st.session_state.document_summary[cam_doc_name] = """**Demo Summary**: This is where the summary of the captured document would appear.
+
+**Smart Questions:**
+1. What is the document about?
+2. Who is the target audience?
+3. What actions are recommended?
+4. Is any regulatory compliance mentioned?
+5. What funding or budget is required?"""
+        st.session_state.uploaded_filenames.append(cam_doc_name)
+        st.success("✅ Demo summary and questions have been added from captured image.")
+
 # --- SHOW SUMMARIES ---
 if st.session_state.document_summary:
     st.subheader("📄 Summaries & Smart Questions")
@@ -93,29 +122,7 @@ if st.session_state.document_summary:
         st.markdown(summary)
         st.markdown("---")
 
-# --- CAMERA INPUT (Demo Version) ---
-st.subheader("📸 Capture Image for Testing (Demo Only)")
-captured_image = st.camera_input("Take a picture")
-if captured_image:
-    st.image(captured_image, caption="Captured Image", use_column_width=True)
-    st.info("✅ Image captured. In this demo version, OCR is not applied.")
-    dummy_text = "Thank you for uploading a photo. In the full version, text would be extracted and summarized here."
-    cam_doc_name = f"camera_demo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    st.session_state.document_content[cam_doc_name] = dummy_text
-    st.session_state.document_summary[cam_doc_name] = """**Demo Summary**: This is where the summary of the captured document would appear.
-
-**Smart Questions:**
-1. What is the document about?
-2. Who is the target audience?
-3. What actions are recommended?
-4. Is any regulatory compliance mentioned?
-5. What funding or budget is required?"""
-    st.session_state.uploaded_filenames.append(cam_doc_name)
-    st.success("✅ Demo summary and questions have been added from captured image.")
-
-# --- RADIO OPTION FOR MODE ---
-mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
-
+# --- MODE ROUTING ---
 if mode == "Client-Asks (Default)":
     st.subheader("Ask Your Question")
     with st.form("chat_input_form", clear_on_submit=True):
@@ -149,3 +156,51 @@ if mode == "Client-Asks (Default)":
                     st.markdown(reply)
                 except OpenAIError as e:
                     st.error(f"OpenAI API Error: {str(e)}")
+
+elif mode == "Deloitte-Asks":
+    st.subheader("Get Smart Questions to Ask Your Client")
+    client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
+    uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
+    document_content = uploaded_file.read().decode("utf-8") if uploaded_file is not None else "No document provided."
+
+    if st.button("Get AI Insights & Questions", key="insights_btn"):
+        if not openai_api_key:
+            st.error("API key missing.")
+        elif not client_profile.strip():
+            st.warning("Please describe the client first.")
+        else:
+            try:
+                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.\n\nClient Profile:\n{client_profile}\n\nClient Document:\n{document_content}"
+                response = openai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a Deloitte subsidy expert."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                ai_response = response.choices[0].message.content
+                st.markdown("### AI Insights & Recommendations")
+                st.markdown(ai_response)
+            except OpenAIError as e:
+                st.error(f"OpenAI Error: {str(e)}")
+
+# --- CHAT HISTORY ---
+if st.session_state.chat_history:
+    st.subheader("💬 Chat History")
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(f"**{message['role'].capitalize()}:** {message['content']}")
+
+    col_reset, col_download = st.columns([1, 1])
+    with col_reset:
+        if st.button("🔁 Reset Chat"):
+            st.session_state.chat_history = []
+            st.success("Chat history cleared.")
+    with col_download:
+        chat_json = json.dumps(st.session_state.chat_history, indent=2)
+        st.download_button(
+            label="📅 Download Chat History",
+            data=chat_json,
+            file_name="chat_history.json",
+            mime="application/json"
+        )

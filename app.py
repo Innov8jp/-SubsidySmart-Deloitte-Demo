@@ -148,6 +148,35 @@ if st.session_state.selected_mode == "Client-Asks (Default)":
             except OpenAIError as e:
                 st.error(f"OpenAI Error: {str(e)}")
 
+# --- DELOITTE-ASKS MODE ---
+elif st.session_state.selected_mode == "Deloitte-Asks":
+    st.subheader(t("Get Smart Questions to Ask Your Client", "クライアントに尋ねるスマートな質問を取得"))
+    client_profile = st.text_area(t("Describe the client (industry, size, goal, etc.)", "クライアントを説明してください（業種、規模、目標など）:"), key="client_profile")
+    uploaded_file = st.file_uploader(t("Upload Client Business Overview (Optional - .txt file)", "クライアントのビジネス概要をアップロード（オプション - .txtファイル）"), type=["txt"], key="client_doc")
+
+    document_content = uploaded_file.read().decode("utf-8") if uploaded_file else "No document provided."
+
+    if st.button(t("Get AI Insights & Questions", "AIの洞察と質問を取得")):
+        if not openai_api_key:
+            st.error("API key missing.")
+        elif not client_profile.strip():
+            st.warning("Please describe the client first.")
+        else:
+            try:
+                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.\n\nClient Profile:\n{client_profile}\n\nClient Document:\n{document_content}\n\nBased on this, please suggest:\n1. One or two likely suitable Japanese subsidy programs.\n2. Two to three intelligent follow-up questions."
+                response = openai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a Deloitte subsidy expert."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                ai_response = response.choices[0].message.content
+                st.markdown("### AI Insights & Recommendations")
+                st.markdown(ai_response)
+            except OpenAIError as e:
+                st.error(f"OpenAI Error: {str(e)}")
+
 # --- CHAT HISTORY ---
 if st.session_state.chat_history:
     st.subheader("💬 Chat History")

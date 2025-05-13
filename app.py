@@ -148,4 +148,5 @@ with st.sidebar:
     else:
         st.sidebar.error(get_translation("OpenAI API key not found."))
     st.sidebar.markdown(get_translation("Powered by [Innov8]"))
-    st.sidebar.markdown(get_translation("Prototype Version 1
+    st.sidebar.markdown(get_translation("Prototype Version 1.0"))
+    st.sidebar.markdown(get_translation("Secure | Scalable | Smart"))

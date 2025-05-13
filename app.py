@@ -102,7 +102,7 @@ if st.session_state.document_summary:
 # --- CONTINUED QUESTION INPUT ---
 if st.session_state.document_content:
     st.subheader("🔍 Ask More Questions About the Documents")
-    question_input = st.text_input("Your follow-up question:", value="", key="user_question_input")
+    question_input = st.text_input("Your follow-up question:", placeholder="e.g., Which subsidy fits best for export growth?", key="user_question_input")
     if st.button("Ask AI"):
         question = question_input.strip()
         if question:
@@ -133,7 +133,7 @@ User Question:
                 }
                 st.session_state.chat_history.append(entry)
                 st.session_state.show_feedback = True
-                st.session_state.user_question_input = ""
+                # Note: Resetting input this way causes a Streamlit error. Removing to avoid conflict.
             except Exception as e:
                 st.error(f"AI response error: {str(e)}")
 

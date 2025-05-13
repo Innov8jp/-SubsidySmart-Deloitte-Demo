@@ -10,31 +10,8 @@ import os
 from io import BytesIO
 import base64
 
-# --- CONFIGURATION ---
-st.set_page_config(
-    page_title="DeloitteSmart™ - AI Assistant",
-    page_icon=":moneybag:",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# --- LANGUAGE TOGGLE ---
+# --- LANGUAGE TOGGLE AND TRANSLATION FUNCTION ---
 language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.image("deloitte_logo.png", width=200)
-    openai_api_key = st.secrets.get("OPENAI_API_KEY")
-    if openai_api_key:
-        st.markdown(get_translation("✅ OpenAI API key is pre-configured."))
-    else:
-        st.error(get_translation("⚠️ OpenAI API key not found in secrets."))
-    st.markdown(get_translation("Powered by [Innov8]"))
-    st.markdown(get_translation("Prototype Version 1.0"))
-    st.markdown(get_translation("Secure | Scalable | Smart"))
-
-    st.markdown("---")
-    st.checkbox(get_translation("Enable Camera"), key="enable_camera") # Re-add camera toggle
 
 def get_translation(english_text):
     translations = {
@@ -72,9 +49,37 @@ def get_translation(english_text):
         "Please upload documents before asking questions.": "質問する前にドキュメントをアップロードしてください。",
         "OpenAI API key is not available. Cannot generate summary.": "OpenAI APIキーが利用できません。要約を生成できません。",
         "OpenAI API key is not available. Cannot answer questions.": "OpenAI APIキーが利用できません。質問に答えることができません。",
-        "Enable Camera": "カメラを有効にする"
+        "Enable Camera": "カメラを有効にする",
+        "✅ OpenAI API key is pre-configured.": "✅ OpenAI APIキーは事前設定済みです。",
+        "⚠️ OpenAI API key not found in secrets.": "⚠️ OpenAI APIキーがsecretsに見つかりません。",
+        "Powered by [Innov8]": "Innov8 提供",
+        "Prototype Version 1.0": "プロトタイプ バージョン 1.0",
+        "Secure | Scalable | Smart": "セキュア | スケーラブル | スマート"
     }
     return translations.get(english_text, english_text) if language == "日本語" else english_text
+
+# --- CONFIGURATION ---
+st.set_page_config(
+    page_title="DeloitteSmart™ - AI Assistant",
+    page_icon=":moneybag:",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.image("deloitte_logo.png", width=200)
+    openai_api_key = st.secrets.get("OPENAI_API_KEY")
+    if openai_api_key:
+        st.markdown(get_translation("✅ OpenAI API key is pre-configured."))
+    else:
+        st.error(get_translation("⚠️ OpenAI API key not found in secrets."))
+    st.markdown(get_translation("Powered by [Innov8]"))
+    st.markdown(get_translation("Prototype Version 1.0"))
+    st.markdown(get_translation("Secure | Scalable | Smart"))
+
+    st.markdown("---")
+    st.checkbox(get_translation("Enable Camera"), key="enable_camera")
 
 # --- SESSION STATE SETUP ---
 session_defaults = {
@@ -84,7 +89,7 @@ session_defaults = {
     "document_content": {},
     "document_summary": {},
     "uploaded_filenames": [],
-    "enable_camera": False # Ensure this is in the defaults
+    "enable_camera": False
 }
 for key, default in session_defaults.items():
     if key not in st.session_state:

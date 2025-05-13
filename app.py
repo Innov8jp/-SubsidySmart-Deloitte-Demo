@@ -1,4 +1,5 @@
-# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Camera OCR, Persistent Chat, Feedback, Downloadable Report)
+
+# DeloitteSmart™ AI Assistant – Enhanced Version (Multi-Doc, Persistent Chat, Feedback, Camera Demo, Japanese Toggle Fix)
 
 import streamlit as st
 import openai
@@ -19,10 +20,13 @@ st.set_page_config(
 )
 
 # --- LANGUAGE TOGGLE ---
+if "language" not in st.session_state:
+    st.session_state.language = "English"
 language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
+st.session_state.language = language
 
 def t(en_text, jp_text):
-    return en_text if language == "English" else jp_text
+    return en_text if st.session_state.language == "English" else jp_text
 
 # --- SIDEBAR ---
 st.sidebar.image("deloitte_logo.png", width=200)
@@ -43,6 +47,7 @@ def init_session():
         "document_summary": {},
         "uploaded_filenames": [],
         "selected_mode": "Client-Asks (Default)",
+        "feedback_entries": []
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -57,11 +62,11 @@ with col1:
 with col2:
     enable_camera = st.checkbox("📸 Enable Camera", value=False)
 
-st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
+st.title(t("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions", "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"))
 
 # --- FILE UPLOAD ---
-with st.expander("📁 Upload Documents (PDF, TXT)"):
-    uploaded_files = st.file_uploader("Upload Files", type=["pdf", "txt"], accept_multiple_files=True)
+with st.expander(t("📁 Upload Documents (PDF, TXT)", "📁 ドキュメントをアップロード")):
+    uploaded_files = st.file_uploader(t("Upload Files", "ファイルをアップロード"), type=["pdf", "txt"], accept_multiple_files=True)
     if uploaded_files:
         for file in uploaded_files:
             filename = file.name
@@ -94,20 +99,9 @@ with st.expander("📁 Upload Documents (PDF, TXT)"):
                     except Exception as e:
                         st.error(f"Error summarizing {filename}: {e}")
 
-# --- CAMERA CAPTURE ---
-if enable_camera:
-    st.subheader("📸 Capture Image for Testing")
-    image = st.camera_input("Take a picture")
-    if image:
-        st.image(image)
-        doc_id = f"CameraCapture_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        st.session_state.document_content[doc_id] = "Demo photo uploaded. In full version, OCR will extract and summarize."
-        st.session_state.document_summary[doc_id] = "**Demo Summary**: This is a placeholder.\n**Questions:** 1. What is the image about? 2. Who is it for?"
-        st.session_state.uploaded_filenames.append(doc_id)
-
 # --- DISPLAY SUMMARIES ---
 if st.session_state.document_summary:
-    st.subheader("📄 Summaries & Smart Questions")
+    st.subheader(t("📄 Summaries & Smart Questions", "📄 要約とスマートな質問"))
     for fname, summary in st.session_state.document_summary.items():
         st.markdown(f"**🗂️ {fname}**")
         st.markdown(summary)
@@ -145,35 +139,26 @@ if st.session_state.selected_mode == "Client-Asks (Default)":
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
                 st.success("✅ Answer generated!")
                 st.markdown(answer)
-            except OpenAIError as e:
-                st.error(f"OpenAI Error: {str(e)}")
 
-# --- DELOITTE-ASKS MODE ---
-elif st.session_state.selected_mode == "Deloitte-Asks":
-    st.subheader(t("Get Smart Questions to Ask Your Client", "クライアントに尋ねるスマートな質問を取得"))
-    client_profile = st.text_area(t("Describe the client (industry, size, goal, etc.)", "クライアントを説明してください（業種、規模、目標など）:"), key="client_profile")
-    uploaded_file = st.file_uploader(t("Upload Client Business Overview (Optional - .txt file)", "クライアントのビジネス概要をアップロード（オプション - .txtファイル）"), type=["txt"], key="client_doc")
-
-    document_content = uploaded_file.read().decode("utf-8") if uploaded_file else "No document provided."
-
-    if st.button(t("Get AI Insights & Questions", "AIの洞察と質問を取得")):
-        if not openai_api_key:
-            st.error("API key missing.")
-        elif not client_profile.strip():
-            st.warning("Please describe the client first.")
-        else:
-            try:
-                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.\n\nClient Profile:\n{client_profile}\n\nClient Document:\n{document_content}\n\nBased on this, please suggest:\n1. One or two likely suitable Japanese subsidy programs.\n2. Two to three intelligent follow-up questions."
-                response = openai.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a Deloitte subsidy expert."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                ai_response = response.choices[0].message.content
-                st.markdown("### AI Insights & Recommendations")
-                st.markdown(ai_response)
+                # --- WAS THIS HELPFUL ---
+                st.write("**Was this helpful?**")
+                col_yes, col_no = st.columns([1, 1])
+                with col_yes:
+                    if st.button("👍 Yes", key=f"yes_{len(st.session_state.chat_history)}"):
+                        st.session_state.feedback_entries.append({
+                            "index": len(st.session_state.chat_history) - 1,
+                            "helpful": True,
+                            "timestamp": datetime.now().isoformat()
+                        })
+                        st.success("Thanks for your feedback!")
+                with col_no:
+                    if st.button("👎 No", key=f"no_{len(st.session_state.chat_history)}"):
+                        st.session_state.feedback_entries.append({
+                            "index": len(st.session_state.chat_history) - 1,
+                            "helpful": False,
+                            "timestamp": datetime.now().isoformat()
+                        })
+                        st.info("Feedback recorded. We'll improve from here.")
             except OpenAIError as e:
                 st.error(f"OpenAI Error: {str(e)}")
 
@@ -191,3 +176,9 @@ if st.session_state.chat_history:
             st.success("Chat history cleared.")
     with col2:
         st.download_button("📅 Download Chat History", data=json.dumps(st.session_state.chat_history, indent=2), file_name="chat_history.json", mime="application/json")
+
+# --- FEEDBACK REVIEW ---
+if st.session_state.feedback_entries:
+    st.subheader("📬 Submitted Feedback")
+    for fb in st.session_state.feedback_entries:
+        st.markdown(f"- Chat #{fb['index'] + 1} — {'👍 Helpful' if fb['helpful'] else '👎 Not Helpful'} @ {fb['timestamp']}")

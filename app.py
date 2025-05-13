@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Camera OCR, Persistent Chat, Feedback, Downloadable Report)
+# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Persistent Chat, Downloadable Report, Feedback)
 
 import streamlit as st
 import openai
@@ -7,20 +7,12 @@ import json
 from datetime import datetime
 from openai import OpenAIError
 import os
-try:
-    from PIL import Image
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
+import pytesseract
+from PIL import Image
+from io import BytesIO
+import base64
 
-# --- Optional OCR (Camera Text Extraction) ---
-try:
-    import pytesseract
-    OCR_AVAILABLE = True
-except ImportError:
-    OCR_AVAILABLE = False
-
-# --- CONFIG ---
+# --- CONFIGURATION - MUST BE FIRST ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
     page_icon=":moneybag:",
@@ -31,24 +23,78 @@ st.set_page_config(
 # --- LANGUAGE TOGGLE ---
 language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
 
+def get_translation(english_text):
+    translations = {
+        "DeloitteSmart™ - AI Assistant": "DeloitteSmart™ - AIアシスタント",
+        "Faster, Smarter Decisions": "より速く、よりスマートな意思決定",
+        "📁 Upload Documents (PDF, TXT)": "📁 ドキュメントをアップロード (PDF, TXT)",
+        "📄 Summaries & Smart Questions": "📄 要約とスマートな質問",
+        "🗂️": "🗂️",
+        "---": "---",
+        "🗣️ Ask Questions Based on the Documents": "🗣️ ドキュメントに基づいて質問する",
+        "Ask anything about the uploaded documents...": "アップロードしたドキュメントについて何でも質問してください...",
+        "💬 Chat History": "💬 チャット履歴",
+        "User": "ユーザー",
+        "Assistant": "アシスタント",
+        "⬇️ Download Report": "⬇️ レポートをダウンロード",
+        "📝 Feedback": "📝 フィードバック",
+        "Share your feedback to help us improve:": "改善のため、フィードバックをお聞かせください:",
+        "Submit Feedback": "フィードバックを送信",
+        "Thank you for your feedback!": "ご意見ありがとうございます！",
+        "Please enter your feedback.": "フィードバックを入力してください。",
+        "📬 Submitted Feedback": "📬 送信されたフィードバック",
+        "Timestamp": "タイムスタンプ",
+        "PDF extraction error for": "のPDF抽出エラー:",
+        "Summary generation error for": "の要約生成エラー:",
+        "❌ Failed to process camera input:": "❌ カメラ入力を処理できませんでした:",
+        "✅ Image captured and processed with AI summary and smart questions.": "✅ 画像をキャプチャし、AIによる要約とスマートな質問で処理しました。",
+        "Error during chat completion:": "チャット完了中にエラーが発生しました:",
+        "You are a highly trained consultant. Summarize the following content and generate 5 smart questions to ask the client.": "あなたは高度な訓練を受けたコンサルタントです。以下の内容を要約し、クライアントに尋ねるべき5つのスマートな質問を生成してください。",
+        "Document:": "ドキュメント:",
+        "You are an AI assistant specialized in summarizing and extracting smart questions.": "あなたは、要約とスマートな質問の抽出に特化したAIアシスタントです。",
+        "You are a helpful AI assistant designed to answer questions based on the provided documents.\nAnalyze the following documents and answer the user's question as accurately and concisely as possible.\nIf the answer is not explicitly found in the documents, state that you cannot find the answer.": "あなたは、提供されたドキュメントに基づいて質問に答えるように設計された、役立つAIアシスタントです。\n以下のドキュメントを分析し、ユーザーの質問に可能な限り正確かつ簡潔に答えてください。\n答えがドキュメントに明示的に見つからない場合は、答えが見つからないと述べてください。",
+        "Question:": "質問:",
+        "# DeloitteSmart™ AI Assistant Report\n\n## Document Summaries:\n": "# DeloitteSmart™ AIアシスタントレポート\n\n## ドキュメントの要約:\n",
+        "## Chat History:\n": "## チャット履歴:\n",
+        "Download Report": "レポートをダウンロード",
+        "Send": "送信",
+        "Please upload documents before asking questions.": "質問する前にドキュメントをアップロードしてください。",
+        "OpenAI API key is not available. Cannot generate summary.": "OpenAI APIキーが利用できません。要約を生成できません。",
+        "OpenAI API key is not available. Cannot answer questions.": "OpenAI APIキーが利用できません。質問に答えることができません。",
+        "Enable Rear Camera Mode": "リアカメラモードを有効にする",
+        "Enable Camera Input": "カメラ入力を有効にする",
+        "📷 Enable Rear Camera Mode": "📷 リアカメラモードを有効にする",
+        "📸 Enable Camera Input": "📸 カメラ入力を有効にする",
+        "Take a picture using rear camera": "リアカメラを使用して写真を撮る",
+        "Take a picture": "写真を撮る",
+        "✅ OpenAI API key is pre-configured.": "✅ OpenAI APIキーは事前設定済みです。",
+        "Powered by [Innov8]": "Innov8 提供",
+        "Prototype Version 1.0": "プロトタイプ バージョン 1.0",
+        "Secure | Scalable | Smart": "セキュア | スケーラブル | スマート"
+    }
+    return translations.get(english_text, english_text) if language == "日本語" else english_text
+
 # --- SIDEBAR ---
-rear_camera_enabled = st.sidebar.checkbox("📷 Enable Rear Camera Mode")
-st.session_state.enable_camera = st.sidebar.checkbox("📸 Enable Camera Input")
-st.sidebar.image("deloitte_logo.png", width=200)
-openai_api_key = st.secrets.get("OPENAI_API_KEY")
-if openai_api_key:
-    st.sidebar.success("✅ OpenAI API key is pre-configured.")
-else:
-    st.sidebar.error("❌ OpenAI API key not found.")
-st.sidebar.markdown("Powered by [Innov8]")
-st.sidebar.markdown("Prototype Version 1.0")
-st.sidebar.markdown("Secure | Scalable | Smart")
+with st.sidebar:
+    rear_camera_enabled = st.checkbox(get_translation("📷 Enable Rear Camera Mode"))
+    st.session_state.enable_camera = st.checkbox(get_translation("📸 Enable Camera Input"))
+    st.image("deloitte_logo.png", width=200)
+    openai_api_key = st.secrets.get("OPENAI_API_KEY")
+    if openai_api_key:
+        st.markdown(get_translation("✅ OpenAI API key is pre-configured."))
+    else:
+        st.error(f"⚠️ {get_translation('OpenAI API key not found in secrets.')}")
+    st.markdown(get_translation("Powered by [Innov8]"))
+    st.markdown(get_translation("Prototype Version 1.0"))
+    st.markdown(get_translation("Secure | Scalable | Smart"))
 
 # --- SESSION STATE SETUP ---
 session_defaults = {
     "chat_history": [],
     "user_question": "",
     "feedback": [],
+    "show_feedback": False,
+    "enable_camera": False,
     "document_content": {},
     "document_summary": {},
     "uploaded_filenames": []
@@ -57,89 +103,40 @@ for key, default in session_defaults.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-# --- TITLE ---
-st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
+# --- MAIN PAGE ---
+title_text = get_translation("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
+st.title(title_text)
 
 # --- FILE UPLOAD ---
-with st.expander("📁 Upload Documents (PDF, TXT)"):
-    uploaded_files = st.file_uploader("Upload Files", type=["pdf", "txt"], accept_multiple_files=True)
+with st.expander(get_translation("📁 Upload Documents (PDF, TXT)")):
+    uploaded_files = st.file_uploader("", type=["pdf", "txt"], accept_multiple_files=True)
     if uploaded_files:
         for file in uploaded_files:
             filename = file.name
-            file_bytes = file.read()
             if filename not in st.session_state.uploaded_filenames:
-                doc_text = ""
-                if file.type == "application/pdf":
-                    try:
+                st.session_state.uploaded_filenames.append(filename)
+                st.session_state.document_content[filename] = ""
+                st.session_state.document_summary[filename] = ""
+                file_bytes = file.read()
+                try:
+                    if file.type == "application/pdf":
                         with fitz.open(stream=file_bytes, filetype="pdf") as doc:
                             for page in doc:
-                                doc_text += page.get_text()
-                    except Exception as e:
-                        st.error(f"PDF extraction error: {str(e)}")
-                        continue
-                elif file.type == "text/plain":
-                    doc_text += file_bytes.decode("utf-8")
+                                st.session_state.document_content[filename] += page.get_text()
+                    elif file.type == "text/plain":
+                        st.session_state.document_content[filename] = file_bytes.decode("utf-8")
 
-                st.session_state.document_content[filename] = doc_text
-                st.session_state.uploaded_filenames.append(filename)
+                    # Summarize
+                    if openai_api_key:
+                        prompt = f"""{get_translation("You are a highly trained consultant. Summarize the following content and generate 5 smart questions to ask the client.")}
 
-                # Summarize
-                if openai_api_key:
-                    try:
-                        prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.\n\nDocument:\n{doc_text}"
-                        response = openai.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
-                                {"role": "user", "content": prompt}
-                            ]
-                        )
-                        st.session_state.document_summary[filename] = response.choices[0].message.content
-                    except Exception as e:
-                        st.error(f"Summary generation error for {filename}: {str(e)}")
-
-# --- SHOW SUMMARIES ---
-if st.session_state.document_summary:
-    st.subheader("📄 Summaries & Smart Questions")
-    for fname, summary in st.session_state.document_summary.items():
-        st.markdown(f"**🗂️ {fname}**")
-        st.markdown(summary)
-        st.markdown("---")
-
-# --- CAMERA INPUT (if enabled) ---
-if st.session_state.enable_camera:
-    st.subheader("📸 Capture Image for Document Input")
-    if not OCR_AVAILABLE:
-        st.warning("OCR is not available. Please install pytesseract and the Tesseract engine.")
-    elif not PIL_AVAILABLE:
-        st.warning("Pillow is not available. Please install the Pillow package.")
-    else:
-        camera_label = "Take a picture using rear camera" if rear_camera_enabled else "Take a picture"
-        captured_image = st.camera_input(camera_label)
-        if captured_image:
-            try:
-                image = Image.open(captured_image)
-                extracted_text = pytesseract.image_to_string(image)
-                cam_doc_name = f"camera_capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                st.session_state.document_content[cam_doc_name] = extracted_text
-                st.session_state.uploaded_filenames.append(cam_doc_name)
-
-                # Summarize extracted image content
-                prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.
-
-Document:
-{extracted_text}"
-                response = openai.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                st.session_state.document_summary[cam_doc_name] = response.choices[0].message.content
-                st.success("✅ Image captured and processed.")
-            except Exception as e:
-                st.error(f"❌ Camera input processing failed: {str(e)}")
-
-# --- CONTINUED QUESTION INPUT ---
-combined_docs = "\n\n".join(st.session_state.document_content.values())
+{get_translation("Document:")}
+{st.session_state.document_content[filename]}
+"""
+                        try:
+                            client = openai.OpenAI(api_key=openai_api_key)
+                            response = client.chat.completions.create(
+                                model="gpt-3.5-turbo",
+                                messages=[
+                                    {"role": "system", "content": get_translation("You are an AI assistant specialized in summarizing and extracting smart questions.")},
+                                    {"role": "user

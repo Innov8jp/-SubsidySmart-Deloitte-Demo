@@ -7,8 +7,8 @@ import json
 from datetime import datetime
 from openai import OpenAIError
 import os
-
-# --- Optional OCR (Camera Text Extraction) ---
+from io import BytesIO
+import base64
 
 # --- CONFIG ---
 st.set_page_config(
@@ -21,27 +21,8 @@ st.set_page_config(
 # --- LANGUAGE TOGGLE ---
 language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
 
-translations = {
-    "Ask anything about the uploaded documents...": {
-        "English": "Ask anything about the uploaded documents...",
-        "日本語": "アップロードされたドキュメントについて質問してください..."
-    },
-    "Ask": {"English": "Ask", "日本語": "質問する"},
-    "Ask Your Question": {"English": "Ask Your Question", "日本語": "質問してください"},
-    "Get Smart Questions to Ask Your Client": {"English": "Get Smart Questions to Ask Your Client", "日本語": "クライアントに尋ねるスマートな質問を取得"},
-    "Get AI Insights & Questions": {"English": "Get AI Insights & Questions", "日本語": "AIの洞察と質問を取得"},
-    "Upload Client Business Overview (Optional - .txt file)": {
-        "English": "Upload Client Business Overview (Optional - .txt file)",
-        "日本語": "クライアントのビジネス概要をアップロード（オプション - .txtファイル）"
-    },
-    "Describe the client (industry, size, goal, etc.)": {
-        "English": "Describe the client (industry, size, goal, etc.):",
-        "日本語": "クライアントを説明してください（業種、規模、目標など）:"
-    }
-}
-
-def t(key):
-    return translations.get(key, {}).get(language, key)
+def t(en_text, jp_text):
+    return en_text if language == "English" else jp_text
 
 # --- SIDEBAR ---
 st.sidebar.image("deloitte_logo.png", width=200)
@@ -54,26 +35,26 @@ st.sidebar.markdown("Powered by [Innov8]")
 st.sidebar.markdown("Prototype Version 1.0")
 st.sidebar.markdown("Secure | Scalable | Smart")
 
-# --- SESSION STATE SETUP ---
-session_defaults = {
-    "chat_history": [],
-    "user_question": "",
-    "feedback": [],
-    "document_content": {},
-    "document_summary": {},
-    "uploaded_filenames": []
-}
-for key, default in session_defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = default
+# --- SESSION STATE ---
+def init_session():
+    defaults = {
+        "chat_history": [],
+        "document_content": {},
+        "document_summary": {},
+        "uploaded_filenames": [],
+        "selected_mode": "Client-Asks (Default)",
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+init_session()
 
-# --- TOP OPTIONS ---
+# --- MODE & CAMERA ---
 st.markdown("### Mode Selection and Camera Toggle")
-col_mode, col_camera = st.columns([3, 1])
-with col_mode:
-    mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
-    st.session_state.selected_mode = mode
-with col_camera:
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.session_state.selected_mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
+with col2:
     enable_camera = st.checkbox("📸 Enable Camera", value=False)
 
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
@@ -84,39 +65,47 @@ with st.expander("📁 Upload Documents (PDF, TXT)"):
     if uploaded_files:
         for file in uploaded_files:
             filename = file.name
-            file_bytes = file.read()
             if filename not in st.session_state.uploaded_filenames:
-                doc_text = ""
-                if file.type == "application/pdf":
-                    try:
-                        with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+                file_text = ""
+                try:
+                    if file.type == "application/pdf":
+                        with fitz.open(stream=file.read(), filetype="pdf") as doc:
                             for page in doc:
-                                doc_text += page.get_text()
-                    except Exception as e:
-                        st.error(f"PDF extraction error: {str(e)}")
-                        continue
-                elif file.type == "text/plain":
-                    doc_text += file_bytes.decode("utf-8")
-
-                st.session_state.document_content[filename] = doc_text
+                                file_text += page.get_text()
+                    elif file.type == "text/plain":
+                        file_text = file.read().decode("utf-8")
+                except Exception as e:
+                    st.error(f"Failed to read {filename}: {e}")
+                    continue
+                st.session_state.document_content[filename] = file_text
                 st.session_state.uploaded_filenames.append(filename)
 
-                # Summarize
                 if openai_api_key:
                     try:
-                        prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.\n\nDocument:\n{doc_text}"
+                        prompt = f"You are a consultant. Summarize and generate 5 questions.\n\nDocument:\n{file_text}"
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",
                             messages=[
-                                {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
+                                {"role": "system", "content": "You are a helpful AI assistant."},
                                 {"role": "user", "content": prompt}
                             ]
                         )
                         st.session_state.document_summary[filename] = response.choices[0].message.content
                     except Exception as e:
-                        st.error(f"Summary generation error for {filename}: {str(e)}")
+                        st.error(f"Error summarizing {filename}: {e}")
 
-# --- SHOW SUMMARIES ---
+# --- CAMERA CAPTURE ---
+if enable_camera:
+    st.subheader("📸 Capture Image for Testing")
+    image = st.camera_input("Take a picture")
+    if image:
+        st.image(image)
+        doc_id = f"CameraCapture_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        st.session_state.document_content[doc_id] = "Demo photo uploaded. In full version, OCR will extract and summarize."
+        st.session_state.document_summary[doc_id] = "**Demo Summary**: This is a placeholder.\n**Questions:** 1. What is the image about? 2. Who is it for?"
+        st.session_state.uploaded_filenames.append(doc_id)
+
+# --- DISPLAY SUMMARIES ---
 if st.session_state.document_summary:
     st.subheader("📄 Summaries & Smart Questions")
     for fname, summary in st.session_state.document_summary.items():
@@ -124,166 +113,52 @@ if st.session_state.document_summary:
         st.markdown(summary)
         st.markdown("---")
 
-# --- CAMERA INPUT (Demo Version) ---
-if enable_camera:
-    st.subheader("📸 Capture Image for Testing (Demo Only)")
-    captured_image = st.camera_input("Take a picture")
-    if captured_image:
-        st.image(captured_image, caption="Captured Image", use_column_width=True)
-        st.info("✅ Image captured. In this demo version, OCR is not applied.")
-        dummy_text = "Thank you for uploading a photo. In the full version, text would be extracted and summarized here."
-        cam_doc_name = f"camera_demo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        st.session_state.document_content[cam_doc_name] = dummy_text
-        st.session_state.document_summary[cam_doc_name] = """**Demo Summary**: This is where the summary of the captured document would appear.
-
-**Smart Questions:**
-1. What is the document about?
-2. Who is the target audience?
-3. What actions are recommended?
-4. Is any regulatory compliance mentioned?
-5. What funding or budget is required?"""
-        st.session_state.uploaded_filenames.append(cam_doc_name)
-        st.success("✅ Demo summary and questions have been added from captured image.")
-
-# --- MODE ROUTING ---
-mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
-st.session_state.selected_mode = mode
-
-if mode == "Client-Asks (Default)":
-    st.subheader(t("Ask Your Question"))
+# --- CLIENT-ASKS MODE ---
+if st.session_state.selected_mode == "Client-Asks (Default)":
+    st.subheader(t("Ask Your Question", "質問してください"))
     with st.form("chat_input_form", clear_on_submit=True):
         col1, col2 = st.columns([9, 1])
         with col1:
-            user_input = st.text_input(t("Ask anything about the uploaded documents..."), key="user_input")
+            user_input = st.text_input(t("Ask anything about the uploaded documents...", "アップロードされたドキュメントについて質問してください..."), key="user_input")
         with col2:
             st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
-            submitted = st.form_submit_button(t("Ask"), use_container_width=True)
+            submitted = st.form_submit_button(t("Ask", "質問する"), use_container_width=True)
 
-        if submitted and user_input:
-            all_text = "
-
-".join(st.session_state.document_content.values())
-".join(st.session_state.document_content.values())
-".join(st.session_state.document_content.values())
-".join(st.session_state.document_content.values())
-            if not all_text.strip():
-                st.warning("Please upload documents before asking questions.")
-            elif not openai_api_key:
-                st.warning("OpenAI API key is not available. Cannot answer questions.")
-            else:
-                st.session_state.chat_history.append({"role": "user", "content": user_input})
-                try:
-                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.
-
-Documents:
-{all_text}
-
-Question: {user_input}"
-                    response = openai.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are an AI assistant that answers questions based on provided documents."},
-                            {"role": "user", "content": prompt}
-                        ]
-                    )
-                    reply = response.choices[0].message.content
-                    st.session_state.chat_history.append({"role": "assistant", "content": reply})
-                    st.success("✅ Answer generated below!")
-                    st.markdown(reply)
-                except OpenAIError as e:
-                    st.error(f"OpenAI API Error: {str(e)}")
-
-elif mode == "Deloitte-Asks":
-    st.subheader(t("Get Smart Questions to Ask Your Client"))
-    client_profile = st.text_area(t("Describe the client (industry, size, goal, etc.):"), key="client_profile"):", key="client_profile")
-    uploaded_file = st.file_uploader(t("Upload Client Business Overview (Optional - .txt file)"), type=["txt"])", type=["txt"])
-
-    document_content = uploaded_file.read().decode("utf-8") if uploaded_file is not None else "No document provided."
-
-    if st.button(t("Get AI Insights & Questions"), key="insights_btn"):
-        if not openai_api_key:
-            st.error("API key missing.")
-        elif not client_profile.strip():
-            st.warning("Please describe the client first.")
+    if submitted and user_input:
+        all_text = "\n\n".join(st.session_state.document_content.values())
+        if not all_text.strip():
+            st.warning("Please upload documents before asking questions.")
+        elif not openai_api_key:
+            st.warning("OpenAI API key is not configured.")
         else:
+            st.session_state.chat_history.append({"role": "user", "content": user_input})
             try:
-                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.
-
-Client Profile:
-{client_profile}
-
-Client Document:
-{document_content}"
+                prompt = f"You are an AI agent. Answer the question using the following documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
                 response = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": "You are a Deloitte subsidy expert."},
+                        {"role": "system", "content": "You are a document-savvy AI assistant."},
                         {"role": "user", "content": prompt}
                     ]
                 )
-                ai_response = response.choices[0].message.content
-                st.markdown("### AI Insights & Recommendations")
-                st.markdown(ai_response)
+                answer = response.choices[0].message.content
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
+                st.success("✅ Answer generated!")
+                st.markdown(answer)
             except OpenAIError as e:
                 st.error(f"OpenAI Error: {str(e)}")
-
 
 # --- CHAT HISTORY ---
 if st.session_state.chat_history:
     st.subheader("💬 Chat History")
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(f"**{message['role'].capitalize()}:** {message['content']}")
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(f"**{msg['role'].capitalize()}:** {msg['content']}")
 
-    col_reset, col_download = st.columns([1, 1])
-    with col_reset:
+    col1, col2 = st.columns([1, 1])
+    with col1:
         if st.button("🔁 Reset Chat"):
             st.session_state.chat_history = []
             st.success("Chat history cleared.")
-    with col_download:
-        chat_json = json.dumps(st.session_state.chat_history, indent=2)
-        st.download_button(
-            label="📅 Download Chat History",
-            data=chat_json,
-            file_name="chat_history.json",
-            mime="application/json"
-        )
-
-# --- DOWNLOAD CHAT REPORT ---
-if st.session_state.chat_history and st.session_state.document_summary:
-    report_text = "# DeloitteSmart™ AI Assistant Report
-
-## Document Summaries:
-"
-    for fname, summary in st.session_state.document_summary.items():
-        report_text += f"### {fname}
-{summary}
-
-"
-    report_text += "
-## Chat History:
-"
-    for chat in st.session_state.chat_history:
-        role = chat.get("role", "User").capitalize()
-        content = chat.get("content", "")
-        timestamp = chat.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        report_text += f"**{role} ({timestamp}):** {content}
-
-"
-
-    from io import BytesIO
-    import base64
-
-    def create_download_link(report):
-        buffer = BytesIO()
-        buffer.write(report.encode("utf-8"))
-        buffer.seek(0)
-        b64 = base64.b64encode(buffer.getvalue()).decode()
-        href = f'data:text/plain;base64,{b64}'
-        filename = f"deloitte_smart_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        return f'<a href="{href}" download="{filename}">📄 Download Full Report</a>'
-
-    st.markdown("---")
-    st.subheader("⬇️ Download Full Chat Report")
-    st.markdown(create_download_link(report_text), unsafe_allow_html=True)
-
+    with col2:
+        st.download_button("📅 Download Chat History", data=json.dumps(st.session_state.chat_history, indent=2), file_name="chat_history.json", mime="application/json")

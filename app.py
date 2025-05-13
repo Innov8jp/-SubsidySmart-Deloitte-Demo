@@ -19,66 +19,29 @@ st.set_page_config(
 )
 
 # --- LANGUAGE TOGGLE ---
-language_options = ["English", "日本語"]
-language = st.sidebar.radio("🌐 Language / 言語", language_options, index=language_options.index(st.session_state.get("language", "English")))
-st.session_state["language"] = language
+language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
 
-# --- TEXT CONTENT DICTIONARY ---
-language_dict = {
-    "English": {
-        "title": "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
-        "upload_expander": "📁 Upload Documents (PDF, TXT)",
-        "upload_button": "Upload Files",
-        "summaries_subheader": "📄 Summaries & Smart Questions",
-        "camera_subheader": "📸 Capture Image for Testing (Demo Only)",
-        "camera_input": "Take a picture",
-        "camera_info": "✅ Image captured. In this demo version, OCR is not applied.",
-        "camera_success": "✅ Demo summary and questions have been added from captured image.",
-        "ask_subheader": "Ask Your Question",
-        "ask_input_label": "Ask anything about the uploaded documents...",
-        "ask_button": "Ask",
-        "deloitte_asks_subheader": "Get Smart Questions to Ask Your Client",
-        "client_profile_label": "Describe the client (industry, size, goal, etc.):",
-        "client_overview_upload_label": "Upload Client Business Overview (Optional - .txt file)",
-        "insights_button": "Get AI Insights & Questions",
-        "ai_insights_subheader": "### AI Insights & Recommendations",
-        "chat_history_subheader": "💬 Chat History",
-        "reset_chat_button": "🔁 Reset Chat",
-        "download_chat_button": "📅 Download Chat History",
-        "download_report_subheader": "⬇️ Download Full Chat Report",
-        "download_report_link": "📄 Download Full Report",
-        "mode_selection_header": "### Mode Selection and Camera Toggle",
-        "mode_radio_label": "Choose interaction mode:",
+translations = {
+    "Ask anything about the uploaded documents...": {
+        "English": "Ask anything about the uploaded documents...",
+        "日本語": "アップロードされたドキュメントについて質問してください..."
     },
-    "日本語": {
-        "title": "DeloitteSmart™: より迅速でスマートな意思決定のためのAIアシスタント",
-        "upload_expander": "📁 ドキュメントをアップロード (PDF, TXT)",
-        "upload_button": "ファイルをアップロード",
-        "summaries_subheader": "📄 概要とスマートな質問",
-        "camera_subheader": "📸 テスト用の画像をキャプチャ (デモのみ)",
-        "camera_input": "写真を撮る",
-        "camera_info": "✅ 画像をキャプチャしました。このデモ版では、OCRは適用されません。",
-        "camera_success": "✅ デモの概要と質問がキャプチャされた画像から追加されました。",
-        "ask_subheader": "質問する",
-        "ask_input_label": "アップロードしたドキュメントについて何でも質問してください...",
-        "ask_button": "質問",
-        "deloitte_asks_subheader": "クライアントに尋ねるべきスマートな質問を入手",
-        "client_profile_label": "クライアントについて説明してください (業界、規模、目標など):",
-        "client_overview_upload_label": "クライアントの事業概要をアップロード (任意 - .txtファイル)",
-        "insights_button": "AIの洞察と質問を取得",
-        "ai_insights_subheader": "### AIによる洞察と推奨事項",
-        "chat_history_subheader": "💬 チャット履歴",
-        "reset_chat_button": "🔁 チャットをリセット",
-        "download_chat_button": "📅 チャット履歴をダウンロード",
-        "download_report_subheader": "⬇️ 完全なチャットレポートをダウンロード",
-        "download_report_link": "📄 完全なレポートをダウンロード",
-        "mode_selection_header": "### モード選択とカメラの切り替え",
-        "mode_radio_label": "インタラクションモードを選択:",
+    "Ask": {"English": "Ask", "日本語": "質問する"},
+    "Ask Your Question": {"English": "Ask Your Question", "日本語": "質問してください"},
+    "Get Smart Questions to Ask Your Client": {"English": "Get Smart Questions to Ask Your Client", "日本語": "クライアントに尋ねるスマートな質問を取得"},
+    "Get AI Insights & Questions": {"English": "Get AI Insights & Questions", "日本語": "AIの洞察と質問を取得"},
+    "Upload Client Business Overview (Optional - .txt file)": {
+        "English": "Upload Client Business Overview (Optional - .txt file)",
+        "日本語": "クライアントのビジネス概要をアップロード（オプション - .txtファイル）"
     },
+    "Describe the client (industry, size, goal, etc.)": {
+        "English": "Describe the client (industry, size, goal, etc.):",
+        "日本語": "クライアントを説明してください（業種、規模、目標など）:"
+    }
 }
 
-def get_text(key):
-    return language_dict.get(st.session_state.get("language", "English"), language_dict["English"]).get(key, key)
+def t(key):
+    return translations.get(key, {}).get(language, key)
 
 # --- SIDEBAR ---
 st.sidebar.image("deloitte_logo.png", width=200)
@@ -98,9 +61,7 @@ session_defaults = {
     "feedback": [],
     "document_content": {},
     "document_summary": {},
-    "uploaded_filenames": [],
-    "selected_mode": "Client-Asks (Default)",  # Initialize default mode
-    "selected_mode_index": 0,
+    "uploaded_filenames": []
 }
 for key, default in session_defaults.items():
     if key not in st.session_state:
@@ -110,10 +71,8 @@ for key, default in session_defaults.items():
 st.markdown("### Mode Selection and Camera Toggle")
 col_mode, col_camera = st.columns([3, 1])
 with col_mode:
-    mode_options = ["Client-Asks (Default)", "Deloitte-Asks"]
-    mode = st.radio("Choose interaction mode:", mode_options, index=st.session_state.get("selected_mode_index", 0))
+    mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
     st.session_state.selected_mode = mode
-    st.session_state.selected_mode_index = mode_options.index(mode)
 with col_camera:
     enable_camera = st.checkbox("📸 Enable Camera", value=False)
 
@@ -187,19 +146,26 @@ if enable_camera:
         st.success("✅ Demo summary and questions have been added from captured image.")
 
 # --- MODE ROUTING ---
-if st.session_state.selected_mode == "Client-Asks (Default)":
-    st.subheader("Ask Your Question")
+mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
+st.session_state.selected_mode = mode
+
+if mode == "Client-Asks (Default)":
+    st.subheader(t("Ask Your Question"))
     with st.form("chat_input_form", clear_on_submit=True):
         col1, col2 = st.columns([9, 1])
         with col1:
-            user_input = st.text_input("Ask anything about the uploaded documents...", key="user_input")
+            user_input = st.text_input(t("Ask anything about the uploaded documents..."), key="user_input")
         with col2:
             st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("Ask", use_container_width=True)
+            submitted = st.form_submit_button(t("Ask"), use_container_width=True)
 
-        if submitted and st.session_state.get("user_input"):
-            user_input = st.session_state.user_input
-            all_text = "\n\n".join(st.session_state.document_content.values())
+        if submitted and user_input:
+            all_text = "
+
+".join(st.session_state.document_content.values())
+".join(st.session_state.document_content.values())
+".join(st.session_state.document_content.values())
+".join(st.session_state.document_content.values())
             if not all_text.strip():
                 st.warning("Please upload documents before asking questions.")
             elif not openai_api_key:
@@ -207,7 +173,12 @@ if st.session_state.selected_mode == "Client-Asks (Default)":
             else:
                 st.session_state.chat_history.append({"role": "user", "content": user_input})
                 try:
-                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
+                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.
+
+Documents:
+{all_text}
+
+Question: {user_input}"
                     response = openai.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
@@ -222,21 +193,27 @@ if st.session_state.selected_mode == "Client-Asks (Default)":
                 except OpenAIError as e:
                     st.error(f"OpenAI API Error: {str(e)}")
 
-elif st.session_state.selected_mode == "Deloitte-Asks":
-    st.subheader("Get Smart Questions to Ask Your Client")
-    client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
-    uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
+elif mode == "Deloitte-Asks":
+    st.subheader(t("Get Smart Questions to Ask Your Client"))
+    client_profile = st.text_area(t("Describe the client (industry, size, goal, etc.):"), key="client_profile"):", key="client_profile")
+    uploaded_file = st.file_uploader(t("Upload Client Business Overview (Optional - .txt file)"), type=["txt"])", type=["txt"])
 
     document_content = uploaded_file.read().decode("utf-8") if uploaded_file is not None else "No document provided."
 
-    if st.button("Get AI Insights & Questions", key="insights_btn"):
+    if st.button(t("Get AI Insights & Questions"), key="insights_btn"):
         if not openai_api_key:
             st.error("API key missing.")
         elif not client_profile.strip():
             st.warning("Please describe the client first.")
         else:
             try:
-                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.\n\nClient Profile:\n{client_profile}\n\nClient Document:\n{document_content}"
+                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.
+
+Client Profile:
+{client_profile}
+
+Client Document:
+{document_content}"
                 response = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -247,9 +224,9 @@ elif st.session_state.selected_mode == "Deloitte-Asks":
                 ai_response = response.choices[0].message.content
                 st.markdown("### AI Insights & Recommendations")
                 st.markdown(ai_response)
-
             except OpenAIError as e:
                 st.error(f"OpenAI Error: {str(e)}")
+
 
 # --- CHAT HISTORY ---
 if st.session_state.chat_history:
@@ -274,15 +251,25 @@ if st.session_state.chat_history:
 
 # --- DOWNLOAD CHAT REPORT ---
 if st.session_state.chat_history and st.session_state.document_summary:
-    report_text = "# DeloitteSmart™ AI Assistant Report\n\n## Document Summaries:\n"
+    report_text = "# DeloitteSmart™ AI Assistant Report
+
+## Document Summaries:
+"
     for fname, summary in st.session_state.document_summary.items():
-        report_text += f"### {fname}\n{summary}\n\n"
-    report_text += "\n## Chat History:\n"
+        report_text += f"### {fname}
+{summary}
+
+"
+    report_text += "
+## Chat History:
+"
     for chat in st.session_state.chat_history:
         role = chat.get("role", "User").capitalize()
         content = chat.get("content", "")
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        report_text += f"**{role} ({timestamp}):** {content}\n\n"
+        timestamp = chat.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        report_text += f"**{role} ({timestamp}):** {content}
+
+"
 
     from io import BytesIO
     import base64
@@ -299,3 +286,4 @@ if st.session_state.chat_history and st.session_state.document_summary:
     st.markdown("---")
     st.subheader("⬇️ Download Full Chat Report")
     st.markdown(create_download_link(report_text), unsafe_allow_html=True)
+

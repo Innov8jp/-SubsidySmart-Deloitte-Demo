@@ -138,7 +138,8 @@ if st.session_state.selected_mode == "Client-Asks (Default)":
             st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("Ask", use_container_width=True)
 
-        if submitted and user_input:
+        if submitted and st.session_state.get("user_input"):
+            user_input = st.session_state.user_input
             all_text = "\n\n".join(st.session_state.document_content.values())
             if not all_text.strip():
                 st.warning("Please upload documents before asking questions.")

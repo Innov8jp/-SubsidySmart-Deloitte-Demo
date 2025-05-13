@@ -133,7 +133,7 @@ User Question:
                 }
                 st.session_state.chat_history.append(entry)
                 st.session_state.show_feedback = True
-                st.experimental_rerun()
+                st.session_state.user_question_input = ""
             except Exception as e:
                 st.error(f"AI response error: {str(e)}")
 
@@ -144,6 +144,34 @@ if st.session_state.chat_history:
     for i, chat in enumerate(reversed(st.session_state.chat_history)):
         st.markdown(f"**You ({chat['timestamp']}):** {chat['question']}")
         st.markdown(f"**AI:** {chat['answer']}")
+        regenerate_key = f"regen_{i}"
+        if st.button("🔄 Regenerate Answer", key=regenerate_key):
+            try:
+                openai.api_key = openai_api_key
+                all_docs_combined = "
+
+".join(st.session_state.document_content.values())
+                prompt = f"""
+Refer to the following uploaded documents and regenerate a better response to the question below:
+
+Document Content:
+{all_docs_combined}
+
+User Question:
+{chat['question']}
+"""
+                response = openai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a Deloitte AI assistant."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                regenerated_reply = response.choices[0].message.content
+                st.session_state.chat_history[-(i+1)]["answer"] = regenerated_reply
+                st.experimental_rerun()
+            except Exception as e:
+                st.error(f"Regeneration error: {str(e)}")
         st.markdown("---")
 
 # --- DOWNLOAD REPORT ---

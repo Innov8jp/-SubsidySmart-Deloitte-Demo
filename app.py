@@ -39,7 +39,9 @@ session_defaults = {
     "feedback": [],
     "document_content": {},
     "document_summary": {},
-    "uploaded_filenames": []
+    "uploaded_filenames": [],
+    "selected_mode": "Client-Asks (Default)",  # Initialize default mode
+    "selected_mode_index": 0,
 }
 for key, default in session_defaults.items():
     if key not in st.session_state:
@@ -49,8 +51,10 @@ for key, default in session_defaults.items():
 st.markdown("### Mode Selection and Camera Toggle")
 col_mode, col_camera = st.columns([3, 1])
 with col_mode:
-    mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
+    mode_options = ["Client-Asks (Default)", "Deloitte-Asks"]
+    mode = st.radio("Choose interaction mode:", mode_options, index=st.session_state.get("selected_mode_index", 0))
     st.session_state.selected_mode = mode
+    st.session_state.selected_mode_index = mode_options.index(mode)
 with col_camera:
     enable_camera = st.checkbox("📸 Enable Camera", value=False)
 
@@ -124,11 +128,7 @@ if enable_camera:
         st.success("✅ Demo summary and questions have been added from captured image.")
 
 # --- MODE ROUTING ---
-mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=st.session_state.get("selected_mode_index", 0))
-st.session_state.selected_mode = mode
-st.session_state.selected_mode_index = ["Client-Asks (Default)", "Deloitte-Asks"].index(mode)
-
-if mode == "Client-Asks (Default)":
+if st.session_state.selected_mode == "Client-Asks (Default)":
     st.subheader("Ask Your Question")
     with st.form("chat_input_form", clear_on_submit=True):
         col1, col2 = st.columns([9, 1])
@@ -162,7 +162,7 @@ if mode == "Client-Asks (Default)":
                 except OpenAIError as e:
                     st.error(f"OpenAI API Error: {str(e)}")
 
-elif mode == "Deloitte-Asks":
+elif st.session_state.selected_mode == "Deloitte-Asks":
     st.subheader("Get Smart Questions to Ask Your Client")
     client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
     uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
@@ -221,7 +221,7 @@ if st.session_state.chat_history and st.session_state.document_summary:
     for chat in st.session_state.chat_history:
         role = chat.get("role", "User").capitalize()
         content = chat.get("content", "")
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # Adding timestamp here
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         report_text += f"**{role} ({timestamp}):** {content}\n\n"
 
     from io import BytesIO

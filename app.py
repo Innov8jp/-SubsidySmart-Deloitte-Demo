@@ -8,6 +8,8 @@ from datetime import datetime
 from openai import OpenAIError
 import os
 
+# --- Optional OCR (Camera Text Extraction) ---
+
 # --- CONFIG ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
@@ -50,9 +52,8 @@ with col_mode:
     mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
     st.session_state.selected_mode = mode
 with col_camera:
-    enable_camera = st.toggle("📸 Enable Camera", value=False)
+    enable_camera = st.checkbox("📸 Enable Camera", value=False)
 
-# --- TITLE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 
 # --- FILE UPLOAD ---
@@ -93,6 +94,14 @@ with st.expander("📁 Upload Documents (PDF, TXT)"):
                     except Exception as e:
                         st.error(f"Summary generation error for {filename}: {str(e)}")
 
+# --- SHOW SUMMARIES ---
+if st.session_state.document_summary:
+    st.subheader("📄 Summaries & Smart Questions")
+    for fname, summary in st.session_state.document_summary.items():
+        st.markdown(f"**🗂️ {fname}**")
+        st.markdown(summary)
+        st.markdown("---")
+
 # --- CAMERA INPUT (Demo Version) ---
 if enable_camera:
     st.subheader("📸 Capture Image for Testing (Demo Only)")
@@ -114,15 +123,10 @@ if enable_camera:
         st.session_state.uploaded_filenames.append(cam_doc_name)
         st.success("✅ Demo summary and questions have been added from captured image.")
 
-# --- SHOW SUMMARIES ---
-if st.session_state.document_summary:
-    st.subheader("📄 Summaries & Smart Questions")
-    for fname, summary in st.session_state.document_summary.items():
-        st.markdown(f"**🗂️ {fname}**")
-        st.markdown(summary)
-        st.markdown("---")
-
 # --- MODE ROUTING ---
+mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
+st.session_state.selected_mode = mode
+
 if mode == "Client-Asks (Default)":
     st.subheader("Ask Your Question")
     with st.form("chat_input_form", clear_on_submit=True):
@@ -134,7 +138,9 @@ if mode == "Client-Asks (Default)":
             submitted = st.form_submit_button("Ask", use_container_width=True)
 
         if submitted and user_input:
-            all_text = "\n\n".join(st.session_state.document_content.values())
+            all_text = "
+
+".join(st.session_state.document_content.values())
             if not all_text.strip():
                 st.warning("Please upload documents before asking questions.")
             elif not openai_api_key:
@@ -142,7 +148,12 @@ if mode == "Client-Asks (Default)":
             else:
                 st.session_state.chat_history.append({"role": "user", "content": user_input})
                 try:
-                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
+                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.
+
+Documents:
+{all_text}
+
+Question: {user_input}"
                     response = openai.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
@@ -161,6 +172,7 @@ elif mode == "Deloitte-Asks":
     st.subheader("Get Smart Questions to Ask Your Client")
     client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
     uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
+
     document_content = uploaded_file.read().decode("utf-8") if uploaded_file is not None else "No document provided."
 
     if st.button("Get AI Insights & Questions", key="insights_btn"):
@@ -170,7 +182,13 @@ elif mode == "Deloitte-Asks":
             st.warning("Please describe the client first.")
         else:
             try:
-                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.\n\nClient Profile:\n{client_profile}\n\nClient Document:\n{document_content}"
+                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.
+
+Client Profile:
+{client_profile}
+
+Client Document:
+{document_content}"
                 response = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -183,6 +201,7 @@ elif mode == "Deloitte-Asks":
                 st.markdown(ai_response)
             except OpenAIError as e:
                 st.error(f"OpenAI Error: {str(e)}")
+
 
 # --- CHAT HISTORY ---
 if st.session_state.chat_history:
@@ -204,3 +223,42 @@ if st.session_state.chat_history:
             file_name="chat_history.json",
             mime="application/json"
         )
+
+# --- DOWNLOAD CHAT REPORT ---
+if st.session_state.chat_history and st.session_state.document_summary:
+    report_text = "# DeloitteSmart™ AI Assistant Report
+
+## Document Summaries:
+"
+    for fname, summary in st.session_state.document_summary.items():
+        report_text += f"### {fname}
+{summary}
+
+"
+    report_text += "
+## Chat History:
+"
+    for chat in st.session_state.chat_history:
+        role = chat.get("role", "User").capitalize()
+        content = chat.get("content", "")
+        timestamp = chat.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        report_text += f"**{role} ({timestamp}):** {content}
+
+"
+
+    from io import BytesIO
+    import base64
+
+    def create_download_link(report):
+        buffer = BytesIO()
+        buffer.write(report.encode("utf-8"))
+        buffer.seek(0)
+        b64 = base64.b64encode(buffer.getvalue()).decode()
+        href = f'data:text/plain;base64,{b64}'
+        filename = f"deloitte_smart_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        return f'<a href="{href}" download="{filename}">📄 Download Full Report</a>'
+
+    st.markdown("---")
+    st.subheader("⬇️ Download Full Chat Report")
+    st.markdown(create_download_link(report_text), unsafe_allow_html=True)
+

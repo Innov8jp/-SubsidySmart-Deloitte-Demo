@@ -94,9 +94,9 @@ Document:
 # --- CONTINUED QUESTION INPUT ---
 if st.session_state.document_content:
     st.subheader("🔍 Ask More Questions About the Document")
-    st.text_input("Your follow-up question:", key="user_question")
+    question_input = st.text_input("Your follow-up question:", key="user_question")
     if st.button("Ask AI"):
-        question = st.session_state.user_question.strip()
+        question = question_input.strip()
         if question:
             openai.api_key = openai_api_key
             prompt = f"""
@@ -117,9 +117,6 @@ User Question:
                     ]
                 )
                 reply = response.choices[0].message.content
-                st.markdown("**AI Answer:**")
-                st.markdown(reply)
-
                 entry = {
                     "question": question,
                     "answer": reply,
@@ -127,14 +124,25 @@ User Question:
                 }
                 st.session_state.chat_history.append(entry)
                 st.session_state.show_feedback = True
-
+                st.experimental_rerun()
             except Exception as e:
                 st.error(f"AI response error: {str(e)}")
 
+# --- DISPLAY CHAT HISTORY ---
+if st.session_state.chat_history:
+    st.markdown("---")
+    st.subheader("🗂️ Conversation History")
+    for i, chat in enumerate(reversed(st.session_state.chat_history)):
+        st.markdown(f"**You ({chat['timestamp']}):** {chat['question']}")
+        st.markdown(f"**AI:** {chat['answer']}")
+        st.markdown("---")
+
 # --- DOWNLOAD REPORT ---
 if st.session_state.document_summary:
-    report_text = f"Summary and Smart Questions Generated on {datetime.now().strftime('%Y-%m-%d')}\n\n{st.session_state.document_summary}"
-    st.download_button("📥 Download Report", report_text, file_name="deloitte_ai_summary.txt")
+    full_report = f"Summary and Smart Questions Generated on {datetime.now().strftime('%Y-%m-%d')}\n\n{st.session_state.document_summary}\n\n--- Conversation History ---\n"
+    for item in st.session_state.chat_history:
+        full_report += f"\n[{item['timestamp']}]\nQ: {item['question']}\nA: {item['answer']}\n"
+    st.download_button("📥 Download Report", full_report, file_name="deloitte_ai_summary.txt")
 
 # --- FEEDBACK ---
 if st.session_state.get("show_feedback") and st.session_state.chat_history:

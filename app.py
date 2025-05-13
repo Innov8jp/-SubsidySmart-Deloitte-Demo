@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Full Version (PDF Summary, Multi-Question, Downloadable Report, Feedback)
+# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Persistent Chat, Downloadable Report, Feedback)
 
 import streamlit as st
 import openai
@@ -29,20 +29,19 @@ with st.sidebar:
     st.markdown("Secure | Scalable | Smart")
 
 # --- SESSION STATE SETUP ---
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "user_question" not in st.session_state:
-    st.session_state.user_question = ""
-if "feedback" not in st.session_state:
-    st.session_state.feedback = []
-if "show_feedback" not in st.session_state:
-    st.session_state.show_feedback = False
-if "enable_camera" not in st.session_state:
-    st.session_state.enable_camera = False
-if "document_content" not in st.session_state:
-    st.session_state.document_content = ""
-if "document_summary" not in st.session_state:
-    st.session_state.document_summary = ""
+session_defaults = {
+    "chat_history": [],
+    "user_question": "",
+    "feedback": [],
+    "show_feedback": False,
+    "enable_camera": False,
+    "document_content": {},
+    "document_summary": {},
+    "uploaded_filenames": []
+}
+for key, default in session_defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # --- MAIN PAGE ---
 title_text = "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions" if language == "English" else "DeloitteSmart™：より速く、よりスマートな意思決定を支援するAIアシスタント"
@@ -52,58 +51,68 @@ st.title(title_text)
 with st.expander("📁 Upload Documents (PDF, TXT)"):
     uploaded_files = st.file_uploader("", type=["pdf", "txt"], accept_multiple_files=True)
     if uploaded_files:
-        doc_text = ""
-        doc_names = []
         for file in uploaded_files:
-            doc_names.append(file.name)
+            filename = file.name
             file_bytes = file.read()
-            if file.type == "application/pdf":
-                try:
-                    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
-                        for page in doc:
-                            doc_text += page.get_text()
-                except Exception as e:
-                    st.error(f"PDF extraction error: {str(e)}")
-            elif file.type == "text/plain":
-                doc_text += file_bytes.decode("utf-8")
+            if filename not in st.session_state.uploaded_filenames:
+                doc_text = ""
+                if file.type == "application/pdf":
+                    try:
+                        with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+                            for page in doc:
+                                doc_text += page.get_text()
+                    except Exception as e:
+                        st.error(f"PDF extraction error: {str(e)}")
+                        continue
+                elif file.type == "text/plain":
+                    doc_text += file_bytes.decode("utf-8")
 
-        st.session_state.document_content = doc_text
+                st.session_state.document_content[filename] = doc_text
+                st.session_state.uploaded_filenames.append(filename)
 
-        openai.api_key = openai_api_key
-        prompt = f"""
+                # Summarize
+                openai.api_key = openai_api_key
+                prompt = f"""
 You are a highly trained consultant. Summarize the following content and generate 5 smart questions to ask the client.
 
 Document:
 {doc_text}
 """
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            summary_result = response.choices[0].message.content
-            st.session_state.document_summary = summary_result
-            st.subheader("📄 Summary & Questions")
-            st.markdown(summary_result)
-        except Exception as e:
-            st.error(f"Summary generation error: {str(e)}")
+                try:
+                    response = openai.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    summary_result = response.choices[0].message.content
+                    st.session_state.document_summary[filename] = summary_result
+                except Exception as e:
+                    st.error(f"Summary generation error for {filename}: {str(e)}")
+
+# --- SHOW SUMMARIES ---
+if st.session_state.document_summary:
+    st.subheader("📄 Summaries & Smart Questions")
+    for fname, summary in st.session_state.document_summary.items():
+        st.markdown(f"#### 🗂️ {fname}")
+        st.markdown(summary)
+        st.markdown("---")
 
 # --- CONTINUED QUESTION INPUT ---
 if st.session_state.document_content:
-    st.subheader("🔍 Ask More Questions About the Document")
-    question_input = st.text_input("Your follow-up question:", key="user_question")
+    st.subheader("🔍 Ask More Questions About the Documents")
+    question_input = st.text_input("Your follow-up question:", value="", key="user_question_input")
     if st.button("Ask AI"):
         question = question_input.strip()
         if question:
             openai.api_key = openai_api_key
+            all_docs_combined = "\n\n".join(st.session_state.document_content.values())
             prompt = f"""
-Refer to the following uploaded document and answer the question below:
+Refer to the following uploaded documents and answer the question below:
 
 Document Content:
-{st.session_state.document_content}
+{all_docs_combined}
 
 User Question:
 {question}
@@ -139,7 +148,10 @@ if st.session_state.chat_history:
 
 # --- DOWNLOAD REPORT ---
 if st.session_state.document_summary:
-    full_report = f"Summary and Smart Questions Generated on {datetime.now().strftime('%Y-%m-%d')}\n\n{st.session_state.document_summary}\n\n--- Conversation History ---\n"
+    full_report = f"Summary and Smart Questions Generated on {datetime.now().strftime('%Y-%m-%d')}\n\n"
+    for fname, summary in st.session_state.document_summary.items():
+        full_report += f"\n--- {fname} ---\n{summary}\n"
+    full_report += "\n--- Conversation History ---\n"
     for item in st.session_state.chat_history:
         full_report += f"\n[{item['timestamp']}]\nQ: {item['question']}\nA: {item['answer']}\n"
     st.download_button("📥 Download Report", full_report, file_name="deloitte_ai_summary.txt")

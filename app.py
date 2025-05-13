@@ -1,3 +1,5 @@
+# DeloitteSmart™ AI Assistant (Updated with PDF & Multi-Question Support)
+
 import streamlit as st
 import openai
 import fitz  # PyMuPDF
@@ -40,16 +42,12 @@ with st.sidebar:
             st.info("No feedback data available yet.")
 
 # --- SESSION STATE SETUP ---
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "user_question" not in st.session_state:
-    st.session_state.user_question = ""
-if "feedback" not in st.session_state:
-    st.session_state.feedback = []
-if "show_feedback" not in st.session_state:
-    st.session_state.show_feedback = False
-if "enable_camera" not in st.session_state:
-    st.session_state.enable_camera = False
+for key in ["chat_history", "user_question", "feedback", "show_feedback", "enable_camera"]:
+    if key not in st.session_state:
+        st.session_state[key] = [] if key in ["chat_history", "feedback"] else False
+
+if "document_content" not in st.session_state:
+    st.session_state.document_content = ""
 
 # --- MAIN PAGE ---
 st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
@@ -75,11 +73,10 @@ with col1:
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-You are a highly experienced Deloitte consultant specializing in Japanese government subsidies. Use a structured thought process:
+You are a highly experienced Deloitte consultant specializing in Japanese government subsidies.
 
-1. Identify relevant subsidy programs (3 listed).
-2. Analyze user eligibility based on the question.
-3. Provide a concise, professional answer. If needed, request missing info.
+Context Document:
+{st.session_state.document_content}
 
 User Question: {user_question}
 """
@@ -113,12 +110,23 @@ User Question: {user_question}
     elif mode == "Deloitte-Asks":
         st.subheader("Get Smart Questions to Ask Your Client")
         client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
-        uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"])
+
+        uploaded_files = st.file_uploader("Upload Documents (PDF, TXT)", type=["pdf", "txt"], accept_multiple_files=True)
+
+        if uploaded_files:
+            st.session_state.document_content = ""
+            for file in uploaded_files:
+                if file.type == "application/pdf":
+                    with fitz.open(stream=file.read(), filetype="pdf") as doc:
+                        for page in doc:
+                            st.session_state.document_content += page.get_text()
+                elif file.type == "text/plain":
+                    st.session_state.document_content += file.read().decode("utf-8")
+        else:
+            st.session_state.document_content = "No document provided."
 
         st.session_state.enable_camera = st.toggle("📷 Enable Camera Input", key="enable_camera_toggle")
         captured_image = st.camera_input("Take a picture", key="camera") if st.session_state.enable_camera else None
-
-        document_content = uploaded_file.read().decode("utf-8") if uploaded_file else "No document provided."
 
         if st.button("Get AI Insights & Questions", key="insights_btn"):
             if not openai_api_key:
@@ -128,22 +136,18 @@ User Question: {user_question}
             else:
                 openai.api_key = openai_api_key
                 prompt = f"""
-You are SubsidySmart™, a highly intelligent Deloitte AI assistant. Your goal is to provide expert-level analysis of client profiles and documents to determine eligibility for Japanese government subsidies. Follow a structured reasoning process:
+You are SubsidySmart™, a Deloitte AI assistant. Analyze the following:
 
-1. **Analyze Client Profile:** Identify key characteristics of the client (industry, size, goals, etc.).
-2. **Analyze Client Document (if provided):** Extract key information related to their business activities, R&D, expansion plans, etc.
-3. **Based on the analysis, consider the following Japanese subsidy programs and their core requirements:**
-   - **SME Business Expansion Grant 2025:** Supports SMEs (5-100 employees, <$50M revenue) for new market expansion.
-   - **Technology Innovation Support Program 2025:** Funds R&D in AI, IoT, biotech, green energy (3+ years operational history).
-   - **Export Development Assistance 2025:** Supports export expansion (>$500K domestic sales).
-4. **Recommend 1-2 most relevant subsidy programs.**
-5. **Formulate 2-3 insightful follow-up questions**
+1. Client Profile
+2. Uploaded Documents
+3. Recommend 1-2 relevant subsidy programs.
+4. Ask 2-3 insightful follow-up questions.
 
-**Client Profile:**
+Client Profile:
 {client_profile}
 
-**Client Document:**
-{document_content}
+Client Document:
+{st.session_state.document_content}
 """
                 with st.spinner("Getting AI Insights & Questions..."):
                     try:
@@ -184,7 +188,7 @@ if st.session_state.get("show_feedback") and st.session_state.chat_history:
             st.info("Feedback noted. We'll use it to improve.")
             st.rerun()
 
-# --- Chat History Display ---
+# --- Chat History ---
 if st.session_state.chat_history:
     st.markdown("---")
     st.subheader("Conversation History")

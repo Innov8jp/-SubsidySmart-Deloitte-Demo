@@ -124,8 +124,9 @@ if enable_camera:
         st.success("✅ Demo summary and questions have been added from captured image.")
 
 # --- MODE ROUTING ---
-mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
+mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=st.session_state.get("selected_mode_index", 0))
 st.session_state.selected_mode = mode
+st.session_state.selected_mode_index = ["Client-Asks (Default)", "Deloitte-Asks"].index(mode)
 
 if mode == "Client-Asks (Default)":
     st.subheader("Ask Your Question")
@@ -138,11 +139,7 @@ if mode == "Client-Asks (Default)":
             submitted = st.form_submit_button("Ask", use_container_width=True)
 
         if submitted and user_input:
-            all_text = "
-
-".join(st.session_state.document_content.values())
-".join(st.session_state.document_content.values())
-".join(st.session_state.document_content.values())
+            all_text = "\n\n".join(st.session_state.document_content.values())
             if not all_text.strip():
                 st.warning("Please upload documents before asking questions.")
             elif not openai_api_key:
@@ -150,12 +147,7 @@ if mode == "Client-Asks (Default)":
             else:
                 st.session_state.chat_history.append({"role": "user", "content": user_input})
                 try:
-                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.
-
-Documents:
-{all_text}
-
-Question: {user_input}"
+                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
                     response = openai.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
@@ -184,13 +176,7 @@ elif mode == "Deloitte-Asks":
             st.warning("Please describe the client first.")
         else:
             try:
-                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.
-
-Client Profile:
-{client_profile}
-
-Client Document:
-{document_content}"
+                prompt = f"You are an AI assistant analyzing client profiles and business plans to recommend subsidy programs and suggest follow-up questions.\n\nClient Profile:\n{client_profile}\n\nClient Document:\n{document_content}"
                 response = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -228,25 +214,15 @@ if st.session_state.chat_history:
 
 # --- DOWNLOAD CHAT REPORT ---
 if st.session_state.chat_history and st.session_state.document_summary:
-    report_text = "# DeloitteSmart™ AI Assistant Report
-
-## Document Summaries:
-"
+    report_text = "# DeloitteSmart™ AI Assistant Report\n\n## Document Summaries:\n"
     for fname, summary in st.session_state.document_summary.items():
-        report_text += f"### {fname}
-{summary}
-
-"
-    report_text += "
-## Chat History:
-"
+        report_text += f"### {fname}\n{summary}\n\n"
+    report_text += "\n## Chat History:\n"
     for chat in st.session_state.chat_history:
         role = chat.get("role", "User").capitalize()
         content = chat.get("content", "")
-        timestamp = chat.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        report_text += f"**{role} ({timestamp}):** {content}
-
-"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # Adding timestamp here
+        report_text += f"**{role} ({timestamp}):** {content}\n\n"
 
     from io import BytesIO
     import base64
@@ -263,4 +239,3 @@ if st.session_state.chat_history and st.session_state.document_summary:
     st.markdown("---")
     st.subheader("⬇️ Download Full Chat Report")
     st.markdown(create_download_link(report_text), unsafe_allow_html=True)
-

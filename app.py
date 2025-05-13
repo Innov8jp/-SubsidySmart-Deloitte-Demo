@@ -7,7 +7,12 @@ import json
 from datetime import datetime
 from openai import OpenAIError
 import os
-import pytesseract
+try:
+    import pytesseract
+    from PIL import Image
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
 from PIL import Image
 
 # --- CONFIG ---
@@ -106,36 +111,39 @@ if st.session_state.document_summary:
 # --- CAMERA INPUT (if enabled) ---
 if st.session_state.enable_camera:
     st.subheader("📸 Capture Image for Document Input")
-    camera_label = "Take a picture using rear camera" if rear_camera_enabled else "Take a picture"
-    captured_image = st.camera_input(camera_label)
-    if captured_image:
-        try:
-            image = Image.open(captured_image)
-            extracted_text = pytesseract.image_to_string(image)
-            cam_doc_name = f"camera_capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            st.session_state.document_content[cam_doc_name] = extracted_text
-            st.session_state.uploaded_filenames.append(cam_doc_name)
+    if not OCR_AVAILABLE:
+        st.warning("OCR is not available. Please install pytesseract and the Tesseract engine.")
+    else:
+        camera_label = "Take a picture using rear camera" if rear_camera_enabled else "Take a picture"
+        captured_image = st.camera_input(camera_label)
+        if captured_image:
+            try:
+                image = Image.open(captured_image)
+                extracted_text = pytesseract.image_to_string(image)
+                cam_doc_name = f"camera_capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                st.session_state.document_content[cam_doc_name] = extracted_text
+                st.session_state.uploaded_filenames.append(cam_doc_name)
 
-            # Generate summary from captured image
-            openai.api_key = openai_api_key
-            prompt = f"""
+                # Generate summary from captured image
+                openai.api_key = openai_api_key
+                prompt = f"""
 You are a highly trained consultant. Summarize the following content and generate 5 smart questions to ask the client.
 
 Document:
 {extracted_text}
 """
-            response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            cam_summary = response.choices[0].message.content
-            st.session_state.document_summary[cam_doc_name] = cam_summary
-            st.success("✅ Image captured and processed with AI summary and smart questions.")
-        except Exception as e:
-            st.error(f"❌ Failed to process camera input: {str(e)}")
+                response = openai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                cam_summary = response.choices[0].message.content
+                st.session_state.document_summary[cam_doc_name] = cam_summary
+                st.success("✅ Image captured and processed with AI summary and smart questions.")
+            except Exception as e:
+                st.error(f"❌ Failed to process camera input: {str(e)}")
 
 # --- CONTINUED QUESTION INPUT ---
 combined_docs = "\n\n".join(st.session_state.document_content.values())

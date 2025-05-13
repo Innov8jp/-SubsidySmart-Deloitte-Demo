@@ -103,65 +103,17 @@ if captured_image:
     dummy_text = "Thank you for uploading a photo. In the full version, text would be extracted and summarized here."
     cam_doc_name = f"camera_demo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     st.session_state.document_content[cam_doc_name] = dummy_text
-    st.session_state.document_summary[cam_doc_name] = "**Demo Summary**: This is where the summary of the captured document would appear.
+    st.session_state.document_summary[cam_doc_name] = """**Demo Summary**: This is where the summary of the captured document would appear.
 
 **Smart Questions:**
 1. What is the document about?
 2. Who is the target audience?
 3. What actions are recommended?
 4. Is any regulatory compliance mentioned?
-5. What funding or budget is required?"
+5. What funding or budget is required?"""
     st.session_state.uploaded_filenames.append(cam_doc_name)
     st.success("✅ Demo summary and questions have been added from captured image.")
 # --- CONTINUED QUESTION INPUT ---
 combined_docs = "
 
-".join(st.session_state.document_content.values())
 
-st.subheader("💬 Ask Questions Based on Uploaded Documents")
-with st.form("question_form"):
-    user_input = st.text_input("Ask a question about your uploaded content:", key="user_input")
-    submitted = st.form_submit_button("Ask")
-
-    if submitted and user_input.strip():
-        if not openai_api_key:
-            st.warning("OpenAI API key not found.")
-        elif not combined_docs:
-            st.warning("Please upload documents or capture an image first.")
-        else:
-            try:
-                qa_prompt = f"""
-You are a helpful AI assistant designed to answer questions based on the following documents:
-
-{combined_docs}
-
-Question:
-{user_input.strip()}
-"""
-                response = openai.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are an AI assistant that answers questions based on uploaded documents."},
-                        {"role": "user", "content": qa_prompt}
-                    ]
-                )
-                reply = response.choices[0].message.content
-                st.session_state.chat_history.append({
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "question": user_input.strip(),
-                    "answer": reply
-                })
-                st.success("Answer generated and saved to history.")
-            except Exception as e:
-                st.error(f"AI response error: {str(e)}")
-
-# --- DISPLAY CHAT HISTORY ---
-if st.session_state.chat_history:
-    st.markdown("---")
-    st.subheader("📜 Conversation History")
-    for chat in reversed(st.session_state.chat_history):
-        st.markdown(f"**🧑‍💼 You ({chat['timestamp']}):** {chat['question']}")
-        st.markdown(f"**🤖 AI:** {chat['answer']}")
-        st.markdown("---")
-
-".join(st.session_state.document_content.values())

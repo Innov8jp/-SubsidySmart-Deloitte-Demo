@@ -7,7 +7,11 @@ import json
 from datetime import datetime
 from openai import OpenAIError
 import os
-from PIL import Image
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 # --- Optional OCR (Camera Text Extraction) ---
 try:
@@ -107,6 +111,8 @@ if st.session_state.enable_camera:
     st.subheader("📸 Capture Image for Document Input")
     if not OCR_AVAILABLE:
         st.warning("OCR is not available. Please install pytesseract and the Tesseract engine.")
+    elif not PIL_AVAILABLE:
+        st.warning("Pillow is not available. Please install the Pillow package.")
     else:
         camera_label = "Take a picture using rear camera" if rear_camera_enabled else "Take a picture"
         captured_image = st.camera_input(camera_label)
@@ -119,7 +125,10 @@ if st.session_state.enable_camera:
                 st.session_state.uploaded_filenames.append(cam_doc_name)
 
                 # Summarize extracted image content
-                prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.\n\nDocument:\n{extracted_text}"
+                prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.
+
+Document:
+{extracted_text}"
                 response = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[

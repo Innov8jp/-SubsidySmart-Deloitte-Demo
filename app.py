@@ -100,6 +100,9 @@ if st.session_state.document_summary:
         st.markdown("---")
 
 # --- CONTINUED QUESTION INPUT ---
+combined_docs = "
+
+".join(st.session_state.document_content.values())
 if st.session_state.document_content:
     st.subheader("💬 Chat with DeloitteSmart™ AI")
     with st.form(key="chat_form"):
@@ -109,6 +112,4 @@ if st.session_state.document_content:
     if submit_button and question_input.strip():
         question = question_input.strip()
         openai.api_key = openai_api_key
-        combined_docs = "
-
-".join(st.session_state.document_content.values())
+        # 🛠 Removed buggy feature: combined_docs = ...

@@ -188,9 +188,9 @@ elif st.session_state.selected_mode == "Deloitte-Asks":
                 ai_response = response.choices[0].message.content
                 st.markdown("### AI Insights & Recommendations")
                 st.markdown(ai_response)
+
             except OpenAIError as e:
                 st.error(f"OpenAI Error: {str(e)}")
-
 
 # --- CHAT HISTORY ---
 if st.session_state.chat_history:

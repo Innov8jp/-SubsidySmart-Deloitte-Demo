@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Persistent Chat, Downloadable Report, Feedback)
+# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Camera OCR, Persistent Chat, Feedback, Downloadable Report)
 
 import streamlit as st
 import openai
@@ -7,13 +7,14 @@ import json
 from datetime import datetime
 from openai import OpenAIError
 import os
+from PIL import Image
+
+# --- Optional OCR (Camera Text Extraction) ---
 try:
     import pytesseract
-    from PIL import Image
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
-from PIL import Image
 
 # --- CONFIG ---
 st.set_page_config(
@@ -29,21 +30,21 @@ language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], 
 # --- SIDEBAR ---
 rear_camera_enabled = st.sidebar.checkbox("📷 Enable Rear Camera Mode")
 st.session_state.enable_camera = st.sidebar.checkbox("📸 Enable Camera Input")
-with st.sidebar:
-    st.image("deloitte_logo.png", width=200)
-    openai_api_key = st.secrets["OPENAI_API_KEY"]
-    st.markdown("✅ OpenAI API key is pre-configured.")
-    st.markdown("Powered by [Innov8]")
-    st.markdown("Prototype Version 1.0")
-    st.markdown("Secure | Scalable | Smart")
+st.sidebar.image("deloitte_logo.png", width=200)
+openai_api_key = st.secrets.get("OPENAI_API_KEY")
+if openai_api_key:
+    st.sidebar.success("✅ OpenAI API key is pre-configured.")
+else:
+    st.sidebar.error("❌ OpenAI API key not found.")
+st.sidebar.markdown("Powered by [Innov8]")
+st.sidebar.markdown("Prototype Version 1.0")
+st.sidebar.markdown("Secure | Scalable | Smart")
 
 # --- SESSION STATE SETUP ---
 session_defaults = {
     "chat_history": [],
     "user_question": "",
     "feedback": [],
-    "show_feedback": False,
-    "enable_camera": False,
     "document_content": {},
     "document_summary": {},
     "uploaded_filenames": []
@@ -52,13 +53,12 @@ for key, default in session_defaults.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-# --- MAIN PAGE ---
-title_text = "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions" if language == "English" else "DeloitteSmart™：より速く、よりスマートな意思決定を支援するAIアシスタント"
-st.title(title_text)
+# --- TITLE ---
+st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
 
 # --- FILE UPLOAD ---
 with st.expander("📁 Upload Documents (PDF, TXT)"):
-    uploaded_files = st.file_uploader("", type=["pdf", "txt"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload Files", type=["pdf", "txt"], accept_multiple_files=True)
     if uploaded_files:
         for file in uploaded_files:
             filename = file.name
@@ -80,31 +80,25 @@ with st.expander("📁 Upload Documents (PDF, TXT)"):
                 st.session_state.uploaded_filenames.append(filename)
 
                 # Summarize
-                openai.api_key = openai_api_key
-                prompt = f"""
-You are a highly trained consultant. Summarize the following content and generate 5 smart questions to ask the client.
-
-Document:
-{doc_text}
-"""
-                try:
-                    response = openai.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
-                            {"role": "user", "content": prompt}
-                        ]
-                    )
-                    summary_result = response.choices[0].message.content
-                    st.session_state.document_summary[filename] = summary_result
-                except Exception as e:
-                    st.error(f"Summary generation error for {filename}: {str(e)}")
+                if openai_api_key:
+                    try:
+                        prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.\n\nDocument:\n{doc_text}"
+                        response = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        st.session_state.document_summary[filename] = response.choices[0].message.content
+                    except Exception as e:
+                        st.error(f"Summary generation error for {filename}: {str(e)}")
 
 # --- SHOW SUMMARIES ---
 if st.session_state.document_summary:
     st.subheader("📄 Summaries & Smart Questions")
     for fname, summary in st.session_state.document_summary.items():
-        st.markdown(f"#### 🗂️ {fname}")
+        st.markdown(f"**🗂️ {fname}**")
         st.markdown(summary)
         st.markdown("---")
 
@@ -124,14 +118,8 @@ if st.session_state.enable_camera:
                 st.session_state.document_content[cam_doc_name] = extracted_text
                 st.session_state.uploaded_filenames.append(cam_doc_name)
 
-                # Generate summary from captured image
-                openai.api_key = openai_api_key
-                prompt = f"""
-You are a highly trained consultant. Summarize the following content and generate 5 smart questions to ask the client.
-
-Document:
-{extracted_text}
-"""
+                # Summarize extracted image content
+                prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.\n\nDocument:\n{extracted_text}"
                 response = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -139,11 +127,10 @@ Document:
                         {"role": "user", "content": prompt}
                     ]
                 )
-                cam_summary = response.choices[0].message.content
-                st.session_state.document_summary[cam_doc_name] = cam_summary
-                st.success("✅ Image captured and processed with AI summary and smart questions.")
+                st.session_state.document_summary[cam_doc_name] = response.choices[0].message.content
+                st.success("✅ Image captured and processed.")
             except Exception as e:
-                st.error(f"❌ Failed to process camera input: {str(e)}")
+                st.error(f"❌ Camera input processing failed: {str(e)}")
 
 # --- CONTINUED QUESTION INPUT ---
 combined_docs = "\n\n".join(st.session_state.document_content.values())

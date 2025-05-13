@@ -21,6 +21,21 @@ st.set_page_config(
 # --- LANGUAGE TOGGLE ---
 language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
 
+# --- SIDEBAR ---
+with st.sidebar:
+    st.image("deloitte_logo.png", width=200)
+    openai_api_key = st.secrets.get("OPENAI_API_KEY")
+    if openai_api_key:
+        st.markdown(get_translation("✅ OpenAI API key is pre-configured."))
+    else:
+        st.error(get_translation("⚠️ OpenAI API key not found in secrets."))
+    st.markdown(get_translation("Powered by [Innov8]"))
+    st.markdown(get_translation("Prototype Version 1.0"))
+    st.markdown(get_translation("Secure | Scalable | Smart"))
+
+    st.markdown("---")
+    st.checkbox(get_translation("Enable Camera"), key="enable_camera") # Re-add camera toggle
+
 def get_translation(english_text):
     translations = {
         "DeloitteSmart™ - AI Assistant": "DeloitteSmart™ - AIアシスタント",
@@ -56,21 +71,10 @@ def get_translation(english_text):
         "Send": "送信",
         "Please upload documents before asking questions.": "質問する前にドキュメントをアップロードしてください。",
         "OpenAI API key is not available. Cannot generate summary.": "OpenAI APIキーが利用できません。要約を生成できません。",
-        "OpenAI API key is not available. Cannot answer questions.": "OpenAI APIキーが利用できません。質問に答えることができません。"
+        "OpenAI API key is not available. Cannot answer questions.": "OpenAI APIキーが利用できません。質問に答えることができません。",
+        "Enable Camera": "カメラを有効にする"
     }
     return translations.get(english_text, english_text) if language == "日本語" else english_text
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.image("deloitte_logo.png", width=200)
-    openai_api_key = st.secrets.get("OPENAI_API_KEY")
-    if openai_api_key:
-        st.markdown(get_translation("✅ OpenAI API key is pre-configured."))
-    else:
-        st.error(get_translation("⚠️ OpenAI API key not found in secrets."))
-    st.markdown(get_translation("Powered by [Innov8]"))
-    st.markdown(get_translation("Prototype Version 1.0"))
-    st.markdown(get_translation("Secure | Scalable | Smart"))
 
 # --- SESSION STATE SETUP ---
 session_defaults = {
@@ -79,7 +83,8 @@ session_defaults = {
     "feedback": [],
     "document_content": {},
     "document_summary": {},
-    "uploaded_filenames": []
+    "uploaded_filenames": [],
+    "enable_camera": False # Ensure this is in the defaults
 }
 for key, default in session_defaults.items():
     if key not in st.session_state:
@@ -146,11 +151,12 @@ st.subheader(get_translation("🗣️ Ask Questions Based on the Documents"))
 chat_container = st.container() # Container for chat messages
 
 with st.form("chat_input_form", clear_on_submit=True):
-    col1, col2 = st.columns([7, 1])
+    col1, col2 = st.columns([9, 1]) # Adjust column widths to give more space to the input
     with col1:
         user_input = st.text_input(get_translation("Ask anything about the uploaded documents..."), key="user_input")
     with col2:
-        submitted = st.form_submit_button(get_translation("Send"))
+        st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True) # Add some vertical space
+        submitted = st.form_submit_button(get_translation("Send"), use_container_width=True) # Make button fill the column
 
     if submitted and user_input:
         if not st.session_state.document_content:

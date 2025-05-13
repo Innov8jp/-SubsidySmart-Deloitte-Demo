@@ -58,22 +58,37 @@ if "enable_camera" not in st.session_state:
 if "document_content" not in st.session_state:
     st.session_state.document_content = ""
 
+# --- MAIN PAGE ---
+
 # --- FILE UPLOAD AND DOCUMENT PARSING ---
 upload_label = "Upload Documents (PDF, TXT)" if language == "English" else "資料をアップロード (PDF, TXT)"
-uploaded_files = st.file_uploader(upload_label, type=["pdf", "txt"], accept_multiple_files=True)
+with st.expander(upload_label):
+    uploaded_files = st.file_uploader("", type=["pdf", "txt"], accept_multiple_files=True)
 
-if uploaded_files:
-    doc_text = ""
-    for file in uploaded_files:
-        if file.type == "application/pdf":
-            with fitz.open(stream=file.read(), filetype="pdf") as doc:
-                for page in doc:
-                    doc_text += page.get_text()
-        elif file.type == "text/plain":
-            doc_text += file.read().decode("utf-8")
-    st.session_state.document_content = doc_text
+    if uploaded_files:
+        doc_text = ""
+        st.markdown("### Uploaded Files:")
+        for file in uploaded_files:
+            st.markdown(f"- `{file.name}`")  # Show file name
+            file_bytes = file.read()
+            if file.type == "application/pdf":
+                try:
+                    with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+                        for page in doc:
+                            doc_text += page.get_text()
+                except Exception as e:
+                    st.error(f"PDF extraction error: {str(e)}")
+            elif file.type == "text/plain":
+                doc_text += file_bytes.decode("utf-8")
+        st.session_state.document_content = doc_text
 
-# --- MAIN PAGE ---
+        # Show document preview
+        preview_label = "**Extracted Text Preview:**" if language == "English" else "**抽出されたテキストのプレビュー：**"
+        st.markdown(preview_label)
+        st.code(st.session_state.document_content[:2000], language="markdown")
+    else:
+        st.session_state.document_content = ""
+
 title_text = "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions" if language == "English" else "DeloitteSmart™：より速く、よりスマートな意思決定を支援するAIアシスタント"
 caption1 = "Ask any business domain specific question and get instant expert advice, powered by Deloitte AI Agent." if language == "English" else "業務に関する質問を入力すると、DeloitteのAIエージェントが即座に専門的なアドバイスを提供します。"
 caption2 = "より速く、よりスマートな意思決定のためのAIアシスタント"  # Always show JP subtitle

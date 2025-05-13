@@ -117,3 +117,44 @@ if captured_image:
 combined_docs = "
 
 ".join(st.session_state.document_content.values())
+
+# --- DOWNLOAD CHAT REPORT ---
+if st.session_state.chat_history and st.session_state.document_summary:
+    report_text = "# DeloitteSmart™ AI Assistant Report
+
+## Document Summaries:
+"
+    for fname, summary in st.session_state.document_summary.items():
+        report_text += f"### {fname}
+{summary}
+
+"
+    report_text += "
+## Chat History:
+"
+    for chat in st.session_state.chat_history:
+        role = chat.get("role", "User").capitalize()
+        content = chat.get("content", "")
+        timestamp = chat.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        report_text += f"**{role} ({timestamp}):** {content}
+
+"
+
+    from io import BytesIO
+    import base64
+
+    def create_download_link(report):
+        buffer = BytesIO()
+        buffer.write(report.encode("utf-8"))
+        buffer.seek(0)
+        b64 = base64.b64encode(buffer.getvalue()).decode()
+        href = f'data:text/plain;base64,{b64}'
+        filename = f"deloitte_smart_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        return f'<a href="{href}" download="{filename}">📄 Download Full Report</a>'
+
+    st.markdown("---")
+    st.subheader("⬇️ Download Full Chat Report")
+    st.markdown(create_download_link(report_text), unsafe_allow_html=True)
+combined_docs = "
+
+".join(st.session_state.document_content.values())

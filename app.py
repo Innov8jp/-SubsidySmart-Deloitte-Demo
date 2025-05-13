@@ -10,7 +10,7 @@ import os
 from io import BytesIO
 import base64
 import re  # Import regular expressions for splitting
-import time # Import time for potential delays/sleep (optional, but good for spinners)
+import time # Import time (used implicitly by spinners/status)
 
 # --- CONFIGURATION - MUST BE FIRST ---
 # Set page configuration for the Streamlit app
@@ -88,6 +88,11 @@ def get_translation(english_text):
         "No document content available or chunks are too large to fit in context.": "利用可能なドキュメント コンテンツがないか、またはチャンクが大きすぎてコンテキストに収まりません。",
         "No text extracted from": "からテキストが抽出されませんでした:",
         "Summary generation skipped (API key missing).": "要約生成はスキップされました (APIキーがありません)。",
+        "Error during document processing for": "のドキュメント処理エラー:",
+        "Text extraction failed": "テキスト抽出に失敗しました",
+        "Chunking failed": "チャンク化に失敗しました",
+        "Summary generation error for": "の要約生成エラー:",
+
     }
     return translations.get(english_text, english_text) if language == "日本語" else english_text
 
@@ -164,7 +169,7 @@ for key, default in session_defaults.items():
 # --- TITLE ---
 st.title(get_translation("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions"))
 
-# --- FILE UPLOAD WIDGET ---
+# --- FILE UPLOAD WIDGET (INSIDE EXPANDER) ---
 # Put just the uploader widget inside the expander
 with st.expander(get_translation("📁 Upload Documents (PDF, TXT)")):
     uploaded_files = st.file_uploader(
@@ -175,7 +180,7 @@ with st.expander(get_translation("📁 Upload Documents (PDF, TXT)")):
     )
 
 # --- DOCUMENT PROCESSING LOGIC (OUTSIDE EXPANDER) ---
-# This block runs after the file_uploader and processes the files
+# This block runs after the file_uploader widget when files are uploaded
 if uploaded_files:
     for file in uploaded_files:
         filename = file.name
@@ -184,9 +189,9 @@ if uploaded_files:
             st.session_state.uploaded_filenames.append(filename)
 
             document_text = ""
-            try:
-                # Add a spinner while processing each file
-                with st.spinner(f"{get_translation('Processing document')} {filename}..."):
+            # Add a spinner while processing each file
+            with st.spinner(f"{get_translation('Processing document')} {filename}..."):
+                try:
                     file_bytes = file.getvalue() # Use getvalue() for BytesIO like object
 
                     # 1. Extract Text
@@ -195,16 +200,14 @@ if uploaded_files:
                             if file.type == "application/pdf":
                                 # Use BytesIO to read PDF from bytes
                                 with fitz.open(stream=file_bytes, filetype="pdf") as doc:
-                                    for page in doc:
-                                        document_text += page.get_text() + "\n\n" # Add newline separation between pages
+                                    document_text = "".join(page.get_text() + "\n\n" for page in doc) # Join pages with newlines
                             elif file.type == "text/plain":
                                 document_text = file_bytes.decode("utf-8")
                             status.update(label=f"{get_translation('Extracting text from')} {filename}... Complete.", state="complete", icon="✅")
                         except Exception as e:
                             status.update(label=f"{get_translation('Extracting text from')} {filename}... Failed.", state="error", icon="❌")
-                            st.error(f"{get_translation('Error during document processing for')} {filename}: Text extraction failed - {str(e)}")
-                            document_text = "" # Clear text if extraction fails
-                            # Continue processing this file, just mark text as empty
+                            st.error(f"{get_translation('Error during document processing for')} {filename}: {get_translation('Text extraction failed')} - {str(e)}")
+                            document_text = "" # Ensure empty if extraction fails
 
                     st.session_state.document_content[filename] = document_text.strip() # Store full content
 
@@ -212,34 +215,29 @@ if uploaded_files:
                         st.warning(f"{get_translation('No text extracted from')} {filename}.")
                         st.session_state.document_chunks[filename] = [] # Ensure chunks list is empty
                         st.session_state.document_summary[filename] = f"Could not extract text from {filename}."
-                        # Don't continue here, allow summary/chunking logic below to run and handle empty text
+                        continue # Skip chunking/summary for this file if no text
 
-                    # 2. Split Document into Chunks (Only if text was extracted)
-                    if document_text.strip():
-                         with st.status(f"{get_translation('Splitting into chunks:')} {filename}...", expanded=False) as status:
-                              try:
-                                 st.session_state.document_chunks[filename] = split_text_into_chunks(
-                                     document_text, chunk_size=SPLIT_CHUNK_SIZE
-                                 )
-                                 status.update(label=f"{get_translation('Splitting into chunks:')} {filename}... Complete.", state="complete", icon="✅")
-                              except Exception as e:
-                                 status.update(label=f"{get_translation('Splitting into chunks:')} {filename}... Failed.", state="error", icon="❌")
-                                 st.error(f"{get_translation('Error during document processing for')} {filename}: Chunking failed - {str(e)}")
-                                 # Fallback: if chunking fails, use the beginning of the text as a single chunk (up to context limit)
-                                 st.session_state.document_chunks[filename] = [document_text[:MAX_CONTEXT_CHARS]]
-                                 st.session_state.document_summary[filename] = f"Chunking failed for {filename}. Using limited text for summary."
-                    else:
-                         # If no text extracted, ensure chunks are empty
-                         st.session_state.document_chunks[filename] = []
+                    # 2. Split Document into Chunks
+                    with st.status(f"{get_translation('Splitting into chunks:')} {filename}...", expanded=False) as status:
+                         try:
+                             st.session_state.document_chunks[filename] = split_text_into_chunks(
+                                 document_text, chunk_size=SPLIT_CHUNK_SIZE
+                             )
+                             status.update(label=f"{get_translation('Splitting into chunks:')} {filename}... Complete.", state="complete", icon="✅")
+                         except Exception as e:
+                             status.update(label=f"{get_translation('Splitting into chunks:')} {filename}... Failed.", state="error", icon="❌")
+                             st.error(f"{get_translation('Error during document processing for')} {filename}: {get_translation('Chunking failed')} - {str(e)}")
+                             # Fallback: if chunking fails, use the beginning of the text as a single chunk (up to context limit)
+                             st.session_state.document_chunks[filename] = [document_text[:MAX_CONTEXT_CHARS]]
 
 
-                    # 3. Summarize if API key is available (Only if text or fallback text exists)
+                    # 3. Summarize if API key is available
                     if openai_api_key:
                         # Use the full text for summarization if it's reasonably small,
                         # otherwise use the first few chunks. Summarizing based on chunks
                         # for very large documents can lose overall context.
                         # Use original document_text for size check
-                        summary_text_source = document_text if len(document_text) < MAX_CONTEXT_CHARS * 2 else " ".join(st.session_state.document_chunks.get(filename, [])[:5]) # Use first 5 chunks if very large, handle missing filename in chunks
+                        summary_text_source = document_text if len(document_text) < MAX_CONTEXT_CHARS * 2 else " ".join(st.session_state.document_chunks.get(filename, [])[:5]) # Use first 5 chunks if very large, handle missing filename in chunks dict gracefully
 
                         if summary_text_source.strip():
                             with st.status(f"{get_translation('Generating summary and questions for')} {filename}...", expanded=True) as status:
@@ -269,7 +267,7 @@ if uploaded_files:
                                     status.update(label=f"{get_translation('Generating summary and questions for')} {filename}... Failed.", state="error", icon="❌")
                                     st.error(f"{get_translation('Summary generation error for')} {filename}: An unexpected error occurred - {str(e)}")
                         else:
-                            # Case where summary_text_source was empty after potentially using first chunks
+                            # Case where summary_text_source was empty after potentially using first chunks or if original text was empty
                             st.session_state.document_summary[filename] = f"Could not generate summary for {filename} (text source was empty)."
                             st.warning(f"Could not generate summary for {filename} (text source was empty).")
 
@@ -279,9 +277,9 @@ if uploaded_files:
                         st.warning(get_translation("OpenAI API key is not available. Cannot generate summary."))
                         st.session_state.document_summary[filename] = get_translation("Summary generation skipped (API key missing).")
 
-            except Exception as e:
-                # Catch any other errors during file reading or initial processing not caught within status blocks
-                st.error(f"{get_translation('Error during document processing for')} {filename}: An unexpected error occurred - {str(e)}")
+                except Exception as e:
+                    # Catch any other errors during file reading or initial processing not caught within status blocks
+                    st.error(f"{get_translation('Error during document processing for')} {filename}: An unexpected error occurred - {str(e)}")
 
 
 # --- SHOW SUMMARIES ---
@@ -333,7 +331,8 @@ with st.form("chat_input_form", clear_on_submit=True):
                     else:
                          combined_chunks_text = chunk
                 else:
-                    break # Stop adding chunks if the limit is reached
+                    # If the next chunk doesn't fit, stop adding chunks
+                    break
 
             if not combined_chunks_text:
                  st.warning(get_translation("No document content available or chunks are too large to fit in context."))
@@ -350,17 +349,20 @@ with st.form("chat_input_form", clear_on_submit=True):
                     status.update(label=get_translation("Sending query to AI..."), state="running")
                     try:
                         client = openai.OpenAI(api_key=openai_api_key)
+                        # Construct messages including system prompt, recent chat history, and the current user query with document context
+                        messages_list = [
+                            # System message defining the AI's role and instructions
+                            {"role": "system", "content": get_translation("You are a helpful AI assistant designed to answer questions based on the provided documents.\nAnalyze the following documents and answer the user's question as accurately and concisely as possible.\nIf the answer is not explicitly found in the documents, state that you cannot find the answer.")},
+                            # Append relevant previous chat history for context (e.g., last 10 non-system messages)
+                            # This helps the AI understand follow-up questions.
+                            *[{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history[-11:-1] if m["role"] != "system"], # Exclude the *current* user message and system messages from history being passed
+                            # The current user's question, including the document context as part of the user message
+                            {"role": "user", "content": f"{get_translation('Documents:')}\n{combined_chunks_text}\n\n{get_translation('Question:')} {user_input}"}
+                        ]
+
                         response_chat = client.chat.completions.create(
-                            model="gpt-3.5-turbo", # Consider gpt-4 for potentially better quality
-                            messages=[
-                                # System message defining the AI's role and instructions
-                                {"role": "system", "content": get_translation("You are a helpful AI assistant designed to answer questions based on the provided documents.\nAnalyze the following documents and answer the user's question as accurately and concisely as possible.\nIf the answer is not explicitly found in the documents, state that you cannot find the answer.")},
-                                # Append relevant previous chat history for context (e.g., last 10 non-system messages)
-                                # This helps the AI understand follow-up questions.
-                                *[{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history[-11:-1] if m["role"] != "system"], # Exclude the *current* user message and system messages
-                                # The current user's question, including the document context
-                                {"role": "user", "content": f"{get_translation('Documents:')}\n{combined_chunks_text}\n\n{get_translation('Question:')} {user_input}"}
-                            ]
+                            model="gpt-3.5-turbo", # Consider gpt-4 for potentially better quality/larger context
+                            messages=messages_list
                         )
                         assistant_response = response_chat.choices[0].message.content
                         # Append assistant's response to history
@@ -398,18 +400,19 @@ if st.session_state.chat_history:
     <script>
         function scrollChatToBottom() {
             // Find the element containing the chat messages - using a reliable data-testid
-            const chatContainer = document.querySelector('[data-testid="stVerticalBlock"]'); // This might target a parent block containing messages
-            // More specific target might be needed depending on Streamlit version/structure
-            // const chatMessages = document.querySelector('[data-testid="chat-messages"]'); // This test id might not always exist/be reliable
+            // This targets the main block containing chat messages. The parent is typically the scrollable one.
+            const chatContainer = document.querySelector('[data-testid="stVerticalBlock"]');
 
             if (chatContainer) {
                 // Attempt to find the scrollable element within or is the container itself
                 const scrollableElement = chatContainer.parentElement; // Often the parent is the scrollable one
-                if (scrollableElement) {
+                if (scrollableElement && scrollableElement.scrollHeight > scrollableElement.clientHeight) { // Check if actually scrollable
                    scrollableElement.scrollTop = scrollableElement.scrollHeight;
                 } else {
                    // Fallback to the container itself if parent is not scrollable
-                   chatContainer.scrollTop = chatContainer.scrollHeight;
+                   if (chatContainer.scrollHeight > chatContainer.clientHeight) { // Check if container is scrollable
+                       chatContainer.scrollTop = chatContainer.scrollHeight;
+                   }
                 }
             }
         }

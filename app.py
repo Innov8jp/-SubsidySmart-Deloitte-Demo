@@ -1,4 +1,5 @@
-# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Persistent Chat, Feedback, Downloadable Report - Basic Chunking)
+
+# DeloitteSmart™ AI Assistant – Full Version (Enhanced Multi-Doc Summarizer, Camera OCR, Persistent Chat, Feedback, Downloadable Report)
 
 import streamlit as st
 import openai
@@ -7,13 +8,8 @@ import json
 from datetime import datetime
 from openai import OpenAIError
 import os
-from io import BytesIO
-import base64
-import re  # Import regular expressions for splitting
-import time # Import time (used implicitly by spinners/status)
 
-# --- CONFIGURATION - MUST BE FIRST ---
-# Set page configuration for the Streamlit app
+# --- CONFIG ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
     page_icon=":moneybag:",
@@ -21,132 +17,135 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CONSTANTS ---
-# Maximum approximate characters to include in the chat prompt context from documents
-# This is a heuristic based on token limits (~4 chars per token for English).
-# GPT-3.5-turbo often has a 16k token limit, leaving room for prompt/response.
-MAX_CONTEXT_CHARS = 14000
-# Smaller chunk size used *before* joining into MAX_CONTEXT_CHARS.
-# This size is used for the individual chunks stored and processed.
-SPLIT_CHUNK_SIZE = 1500 # Slightly larger chunk size for better context within chunks
-
-# --- LANGUAGE TOGGLE AND TRANSLATION FUNCTION ---
-# Allow users to select language via a radio button in the sidebar
-language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0, key="language_select")
-
-# Dictionary containing English to Japanese translations
-def get_translation(english_text):
-    translations = {
-        "DeloitteSmart™ - AI Assistant": "DeloitteSmart™ - AIアシスタント",
-        "Faster, Smarter Decisions": "より速く、よりスマートな意思決定",
-        "📁 Upload Documents (PDF, TXT)": "📁 ドキュメントをアップロード (PDF, TXT)",
-        "📄 Summaries & Smart Questions": "📄 要約とスマートな質問",
-        "🗂️": "🗂️",
-        "---": "---",
-        "🗣️ Ask Questions Based on the Documents": "🗣️ ドキュメントに基づいて質問する",
-        "Ask anything about the uploaded documents...": "アップロードしたドキュメントについて何でも質問してください...",
-        "💬 Chat History": "💬 チャット履歴",
-        "User": "ユーザー",
-        "Assistant": "アシスタント",
-        "⬇️ Download Report": "⬇️ レポートをダウンロード",
-        "📝 Feedback": "📝 フィードバック",
-        "Share your feedback to help us improve:": "改善のため、フィードバックをお聞かせください:",
-        "Submit Feedback": "フィードバックを送信",
-        "Thank you for your feedback!": "ご意見ありがとうございます！",
-        "Please enter your feedback.": "フィードバックを入力してください。",
-        "📬 Submitted Feedback": "📬 送信されたフィードバック",
-        "Timestamp": "タイムスタンプ",
-        "PDF extraction error for": "のPDF抽出エラー:",
-        "Summary generation error for": "の要約生成エラー:",
-        "Error during chat completion:": "チャット完了中にエラーが発生しました:",
-        "Error during document processing for": "のドキュメント処理エラー:",
-        "You are a highly trained consultant. Summarize the following content and generate 5 smart questions to ask the client.": "あなたは高度な訓練を受けたコンサルタントです。以下の内容を要約し、クライアントに尋ねるべき5つのスマートな質問を生成してください。",
-        "Document:": "ドキュメント:",
-        "Documents:": "ドキュメント:", # Used for chat prompt context
-        "Question:": "質問:",
-        "# DeloitteSmart™ AI Assistant Report\n\n## Document Summaries:\n": "# DeloitteSmart™ AIアシスタントレポート\n\n## ドキュメントの要約:\n",
-        "## Chat History:\n": "## チャット履歴:\n",
-        "Download Report": "レポートをダウンロード",
-        "Send": "送信",
-        "Please upload documents before asking questions.": "質問する前にドキュメントをアップロードしてください。",
-        "OpenAI API key is not available. Cannot generate summary.": "OpenAI APIキーが利用できません。要約を生成できません。",
-        "OpenAI API key is not available. Cannot answer questions.": "OpenAI APIキーが利用できません。質問に答えることができません。",
-        "Processing document": "ドキュメントを処理中",
-        "Extracting text from": "からテキストを抽出中:",
-        "Splitting into chunks:": "に分割中:",
-        "Generating summary and questions for": "の要約と質問を生成中:",
-        "OpenAI API key is pre-configured.": "OpenAI APIキーは事前に構成されています。",
-        "OpenAI API key not found.": "OpenAI APIキーが見つかりません。",
-        "Powered by [Innov8]": "[Innov8] 提供",
-        "Prototype Version 1.0": "プロトタイプ バージョン 1.0",
-        "Secure | Scalable | Smart": "安全 | スケーラブル | スマート",
-        "Note: This document is large and analysis uses chunks, which may impact summary/answer accuracy.": "注: このドキュメントはサイズが大きいため、分析にはチャンクが使用され、要約や回答の精度に影響する可能性があります。",
-        "Generating response...": "応答を生成中...",
-        "Sending query to AI...": "AIにクエリを送信中...",
-        "Response received!": "応答を受信しました！",
-        "Error!": "エラー！",
-        "No document content available or chunks are too large to fit in context.": "利用可能なドキュメント コンテンツがないか、またはチャンクが大きすぎてコンテキストに収まりません。",
-        "No text extracted from": "からテキストが抽出されませんでした:",
-        "Summary generation skipped (API key missing).": "要約生成はスキップされました (APIキーがありません)。",
-        "Error during document processing for": "のドキュメント処理エラー:",
-        "Text extraction failed": "テキスト抽出に失敗しました",
-        "Chunking failed": "チャンク化に失敗しました",
-        "Summary generation error for": "の要約生成エラー:",
-
-    }
-    return translations.get(english_text, english_text) if language == "日本語" else english_text
-
-# --- HELPER FUNCTIONS ---
-
-# Basic text splitting function to handle large documents
-def split_text_into_chunks(text, chunk_size=SPLIT_CHUNK_SIZE):
-    """Splits text by paragraphs, then joins into chunks of approximate size."""
-    if not text:
-        return []
-
-    # Split by multiple newlines (paragraphs)
-    paragraphs = re.split(r'\n\s*\n', text)
-
-    chunks = []
-    current_chunk = ""
-    for para in paragraphs:
-        # If adding the next paragraph makes the current chunk too large
-        # (add +2 for the potential "\n\n" that will join them later)
-        if len(current_chunk) + len(para) + 2 > chunk_size and current_chunk:
-            chunks.append(current_chunk.strip())
-            current_chunk = para.strip() # Start new chunk with this paragraph
-        else:
-            if current_chunk:
-                current_chunk += "\n\n" + para.strip()
-            else:
-                current_chunk = para.strip()
-
-    # Add the last chunk if it's not empty
-    if current_chunk:
-        chunks.append(current_chunk)
-
-    # Secondary split for any chunks that are still too large (e.g., single massive paragraphs)
-    final_chunks = []
-    for chunk in chunks:
-        if len(chunk) > chunk_size:
-            # Simple character split as a fallback
-            sub_chunks = [chunk[i:i+chunk_size] for i in range(0, len(chunk), chunk_size)]
-            final_chunks.extend(sub_chunks)
-        else:
-            final_chunks.append(chunk)
-
-    # Remove any empty strings resulting from splits
-    return [c for c in final_chunks if c]
+# --- LANGUAGE TOGGLE ---
+language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
 
 # --- SIDEBAR ---
-# Set up the sidebar with logo, API key status, and branding
-with st.sidebar:
-    st.image("deloitte_logo.png", width=200) # Assuming deloitte_logo.png is in the same directory
-    openai_api_key = st.secrets.get("OPENAI_API_KEY")
-    if openai_api_key:
-        st.sidebar.success(get_translation("OpenAI API key is pre-configured."))
-    else:
-        st.sidebar.error(get_translation("OpenAI API key not found."))
-    st.sidebar.markdown(get_translation("Powered by [Innov8]"))
-    st.sidebar.markdown(get_translation("Prototype Version 1.0"))
-    st.sidebar.markdown(get_translation("Secure | Scalable | Smart"))
+st.sidebar.image("deloitte_logo.png", width=200)
+openai_api_key = st.secrets.get("OPENAI_API_KEY")
+if openai_api_key:
+    st.sidebar.success("✅ OpenAI API key is pre-configured.")
+else:
+    st.sidebar.error("❌ OpenAI API key not found.")
+st.sidebar.markdown("Powered by [Innov8]")
+st.sidebar.markdown("Prototype Version 1.0")
+st.sidebar.markdown("Secure | Scalable | Smart")
+
+# --- SESSION STATE SETUP ---
+session_defaults = {
+    "chat_history": [],
+    "user_question": "",
+    "feedback": [],
+    "document_content": {},
+    "document_summary": {},
+    "uploaded_filenames": []
+}
+for key, default in session_defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
+
+# --- TITLE ---
+st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
+
+# --- FILE UPLOAD ---
+with st.expander("📁 Upload Documents (PDF, TXT)"):
+    uploaded_files = st.file_uploader("Upload Files", type=["pdf", "txt"], accept_multiple_files=True)
+    if uploaded_files:
+        for file in uploaded_files:
+            filename = file.name
+            file_bytes = file.read()
+            if filename not in st.session_state.uploaded_filenames:
+                doc_text = ""
+                if file.type == "application/pdf":
+                    try:
+                        with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+                            for page in doc:
+                                doc_text += page.get_text()
+                    except Exception as e:
+                        st.error(f"PDF extraction error: {str(e)}")
+                        continue
+                elif file.type == "text/plain":
+                    doc_text += file_bytes.decode("utf-8")
+
+                st.session_state.document_content[filename] = doc_text
+                st.session_state.uploaded_filenames.append(filename)
+
+                # Summarize
+                if openai_api_key:
+                    try:
+                        prompt = f"You are a highly trained consultant. Summarize the following content and generate 5 smart questions.\n\nDocument:\n{doc_text}"
+                        response = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are an AI assistant specialized in summarizing and extracting smart questions."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        st.session_state.document_summary[filename] = response.choices[0].message.content
+                    except Exception as e:
+                        st.error(f"Summary generation error for {filename}: {str(e)}")
+
+# --- SHOW SUMMARIES ---
+if st.session_state.document_summary:
+    st.subheader("📄 Summaries & Smart Questions")
+    for fname, summary in st.session_state.document_summary.items():
+        st.markdown(f"**🗂️ {fname}**")
+        st.markdown(summary)
+        st.markdown("---")
+
+# --- CAMERA INPUT (Demo Version) ---
+st.subheader("📸 Capture Image for Testing (Demo Only)")
+captured_image = st.camera_input("Take a picture")
+if captured_image:
+    st.image(captured_image, caption="Captured Image", use_column_width=True)
+    st.info("✅ Image captured. In this demo version, OCR is not applied.")
+    dummy_text = "Thank you for uploading a photo. In the full version, text would be extracted and summarized here."
+    cam_doc_name = f"camera_demo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    st.session_state.document_content[cam_doc_name] = dummy_text
+    st.session_state.document_summary[cam_doc_name] = """**Demo Summary**: This is where the summary of the captured document would appear.
+
+**Smart Questions:**
+1. What is the document about?
+2. Who is the target audience?
+3. What actions are recommended?
+4. Is any regulatory compliance mentioned?
+5. What funding or budget is required?"""
+    st.session_state.uploaded_filenames.append(cam_doc_name)
+    st.success("✅ Demo summary and questions have been added from captured image.")
+
+# --- RADIO OPTION FOR MODE ---
+mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
+
+if mode == "Client-Asks (Default)":
+    st.subheader("Ask Your Question")
+    with st.form("chat_input_form", clear_on_submit=True):
+        col1, col2 = st.columns([9, 1])
+        with col1:
+            user_input = st.text_input("Ask anything about the uploaded documents...", key="user_input")
+        with col2:
+            st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("Ask", use_container_width=True)
+
+        if submitted and user_input:
+            all_text = "\n\n".join(st.session_state.document_content.values())
+            if not all_text.strip():
+                st.warning("Please upload documents before asking questions.")
+            elif not openai_api_key:
+                st.warning("OpenAI API key is not available. Cannot answer questions.")
+            else:
+                st.session_state.chat_history.append({"role": "user", "content": user_input})
+                try:
+                    prompt = f"You are a helpful AI assistant designed to answer questions based on the provided documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
+                    response = openai.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are an AI assistant that answers questions based on provided documents."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    reply = response.choices[0].message.content
+                    st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                    st.success("✅ Answer generated below!")
+                    st.markdown(reply)
+                except OpenAIError as e:
+                    st.error(f"OpenAI API Error: {str(e)}")

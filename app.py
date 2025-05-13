@@ -10,6 +10,14 @@ import os
 from io import BytesIO
 import base64
 
+# --- CONFIGURATION - MUST BE FIRST ---
+st.set_page_config(
+    page_title="DeloitteSmart™ - AI Assistant",
+    page_icon=":moneybag:",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # --- LANGUAGE TOGGLE AND TRANSLATION FUNCTION ---
 language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
 
@@ -57,14 +65,6 @@ def get_translation(english_text):
         "Secure | Scalable | Smart": "セキュア | スケーラブル | スマート"
     }
     return translations.get(english_text, english_text) if language == "日本語" else english_text
-
-# --- CONFIGURATION ---
-st.set_page_config(
-    page_title="DeloitteSmart™ - AI Assistant",
-    page_icon=":moneybag:",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # --- SIDEBAR ---
 with st.sidebar:

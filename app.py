@@ -153,6 +153,8 @@ if st.session_state.chat_history:
 ".join(st.session_state.document_content.values())
 
 ".join(st.session_state.document_content.values())
+
+".join(st.session_state.document_content.values())
                 regen_prompt = f"""
 Refer to the following uploaded documents and regenerate a better response to the question below:
 

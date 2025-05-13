@@ -52,7 +52,11 @@ def get_translation(english_text):
         "Question:": "質問:",
         "# DeloitteSmart™ AI Assistant Report\n\n## Document Summaries:\n": "# DeloitteSmart™ AIアシスタントレポート\n\n## ドキュメントの要約:\n",
         "## Chat History:\n": "## チャット履歴:\n",
-        "Download Report": "レポートをダウンロード"
+        "Download Report": "レポートをダウンロード",
+        "Send": "送信",
+        "Please upload documents before asking questions.": "質問する前にドキュメントをアップロードしてください。",
+        "OpenAI API key is not available. Cannot generate summary.": "OpenAI APIキーが利用できません。要約を生成できません。",
+        "OpenAI API key is not available. Cannot answer questions.": "OpenAI APIキーが利用できません。質問に答えることができません。"
     }
     return translations.get(english_text, english_text) if language == "日本語" else english_text
 
@@ -133,52 +137,69 @@ if st.session_state.document_summary:
     st.subheader(get_translation("📄 Summaries & Smart Questions"))
     for fname, summary in st.session_state.document_summary.items():
         st.markdown(f"#### {get_translation('🗂️')} {fname}")
-        # Escape special Markdown characters in the summary for safer rendering
         escaped_summary = summary.replace("#", "\\#").replace("*", "\\*").replace("_", "\\_").replace("`", "\\`").replace("[", "\\[").replace("]", "\\]")
         st.markdown(escaped_summary)
         st.markdown(get_translation("---"))
 
-# --- CONTINUED QUESTION INPUT ---
-combined_docs = "\n\n".join(st.session_state.document_content.values())
-
+# --- CHAT INTERFACE ---
 st.subheader(get_translation("🗣️ Ask Questions Based on the Documents"))
-st.session_state.user_question = st.text_input("", placeholder=get_translation("Ask anything about the uploaded documents..."), key="user_input")
+chat_container = st.container() # Container for chat messages
 
-if st.session_state.user_question:
-    if not combined_docs.strip():
-        st.warning(get_translation("Please upload documents before asking questions."))
-    elif openai_api_key:
-        prompt_chat = f"""
+with st.form("chat_input_form", clear_on_submit=True):
+    col1, col2 = st.columns([7, 1])
+    with col1:
+        user_input = st.text_input(get_translation("Ask anything about the uploaded documents..."), key="user_input")
+    with col2:
+        submitted = st.form_submit_button(get_translation("Send"))
+
+    if submitted and user_input:
+        if not st.session_state.document_content:
+            st.warning(get_translation("Please upload documents before asking questions."))
+        elif openai_api_key:
+            combined_docs = "\n\n".join(st.session_state.document_content.values())
+            prompt_chat = f"""
 {get_translation("You are a helpful AI assistant designed to answer questions based on the provided documents.\nAnalyze the following documents and answer the user's question as accurately and concisely as possible.\nIf the answer is not explicitly found in the documents, state that you cannot find the answer.")}
 
 {get_translation("Documents:")}
 {combined_docs}
 
-{get_translation("Question:")} {st.session_state.user_question}
+{get_translation("Question:")} {user_input}
 """
-        try:
-            client = openai.OpenAI(api_key=openai_api_key)
-            response_chat = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": get_translation("You are an AI assistant that answers questions based on provided documents.")},
-                    {"role": "user", "content": prompt_chat}
-                ]
-            )
-            assistant_response = response_chat.choices[0].message.content
-            st.session_state.chat_history.append({"role": "user", "content": st.session_state.user_question})
-            st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
-        except OpenAIError as e:
-            st.error(f"{get_translation('Error during chat completion:')} {str(e)}")
-    else:
-        st.warning(get_translation("OpenAI API key is not available. Cannot answer questions."))
+            try:
+                client = openai.OpenAI(api_key=openai_api_key)
+                response_chat = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": get_translation("You are an AI assistant that answers questions based on provided documents.")},
+                        {"role": "user", "content": prompt_chat}
+                    ]
+                )
+                assistant_response = response_chat.choices[0].message.content
+                st.session_state.chat_history.append({"role": "user", "content": user_input})
+                st.session_state.chat_history.append({"role": "assistant", "content": assistant_response})
+            except OpenAIError as e:
+                st.error(f"{get_translation('Error during chat completion:')} {str(e)}")
+        else:
+            st.warning(get_translation("OpenAI API key is not available. Cannot answer questions."))
 
 # --- DISPLAY CHAT HISTORY ---
 if st.session_state.chat_history:
-    st.subheader(get_translation("💬 Chat History"))
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(f"**{get_translation(message['role'].capitalize())}:** {message['content']}")
+    with chat_container:
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.markdown(f"**{get_translation(message['role'].capitalize())}:** {message['content']}")
+
+    # Scroll to the bottom of the chat container
+    js = f"""
+        function scrollChatToBottom() {{
+            const chatContainer = document.querySelector(".st-emotion-cache-r421ms");
+            if (chatContainer) {{
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }}
+        }}
+        scrollChatToBottom();
+        """
+    st.components.v1.html(f"<script>{js}</script>")
 
 # --- DOWNLOAD REPORT ---
 if st.session_state.chat_history and st.session_state.document_summary:
@@ -211,7 +232,7 @@ if st.button(get_translation("Submit Feedback")):
         feedback_entry = {"timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "feedback": feedback_text}
         st.session_state.feedback.append(feedback_entry)
         st.success(get_translation("Thank you for your feedback!"))
-        st.session_state.feedback_input = "" # Clear the input area
+        st.session_state.feedback_input = ""
     else:
         st.warning(get_translation("Please enter your feedback."))
 

@@ -148,14 +148,14 @@ if st.session_state.chat_history:
         if st.button("🔄 Regenerate Answer", key=regenerate_key):
             try:
                 openai.api_key = openai_api_key
-                all_docs_combined = "
+                combined_docs = "
 
 ".join(st.session_state.document_content.values())
-                prompt = f"""
+                regen_prompt = f"""
 Refer to the following uploaded documents and regenerate a better response to the question below:
 
 Document Content:
-{all_docs_combined}
+{combined_docs}
 
 User Question:
 {chat['question']}
@@ -164,12 +164,13 @@ User Question:
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a Deloitte AI assistant."},
-                        {"role": "user", "content": prompt}
+                        {"role": "user", "content": regen_prompt}
                     ]
                 )
                 regenerated_reply = response.choices[0].message.content
                 st.session_state.chat_history[-(i+1)]["answer"] = regenerated_reply
-                st.experimental_rerun()
+                st.session_state.user_question_input = ""
+                st.success("✅ Answer regenerated.")
             except Exception as e:
                 st.error(f"Regeneration error: {str(e)}")
         st.markdown("---")

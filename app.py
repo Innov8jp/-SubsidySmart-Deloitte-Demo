@@ -2,7 +2,7 @@
 
 import streamlit as st
 import openai
-import fitz  # PyMuPDF
+import fitz # PyMuPDF
 import json
 from datetime import datetime
 from openai import OpenAIError

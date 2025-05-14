@@ -177,43 +177,57 @@ with col_main:
                     st.session_state.feedback_entries.append({"helpful": False, "timestamp": datetime.now().isoformat()})
                     st.info(t("Feedback noted.", "フィードバックを記録しました。"))
 
-    # --- DOWNLOAD EXEC REPORT BUTTON BELOW CHAT ---
+        # --- DOWNLOAD EXEC REPORT BUTTON BELOW CHAT ---
     st.markdown("---")
     if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
         docs = st.session_state.document_content
-        combined = "\n\n".join([f"Document: {d}\n{c}" for d,c in docs.items()])
-        # Executive summary generation
+        combined = "
+
+".join([f"Document: {d}
+{c}" for d,c in docs.items()])
+        # Generate executive summary
         sumr = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a top-tier consultant AI."},
-                {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
+                {"role": "user", "content": f"Provide an executive summary:
+{combined}"}
             ]
         )
         exec_sum = sumr.choices[0].message.content
-        # Smart questions generation
+        # Generate smart questions
         qst = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Generate 5 smart questions per document."},
-                {"role": "user", "content": f"Documents:\n{combined}"}
+                {"role": "user", "content": f"Documents:
+{combined}"}
             ]
         )
         questions = qst.choices[0].message.content
-        # Build PDF report
+        # Build PDF report with wrapped text
+        from fpdf import FPDF
+        import textwrap
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial","B",16)
-        pdf.cell(0,10,"Exec Summary & Smart Questions",ln=1)
-        pdf.set_font("Arial","",11)
-        for line in exec_sum.split("\n"):
-            pdf.multi_cell(0,6,line)
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, "Exec Summary & Smart Questions", ln=1)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Executive Summary", ln=1)
+        pdf.set_font("Arial", "", 11)
+        for paragraph in exec_sum.split("
+"):
+            for line in textwrap.wrap(paragraph, width=90):
+                pdf.multi_cell(0, 6, line)
         pdf.ln(4)
-        pdf.set_font("Arial","B",12)
-        pdf.cell(0,8,"Smart Questions",ln=1)
-        pdf.set_font("Arial","",11)
-        for line in questions.split("\n"):
-            pdf.multi_cell(0,6,line)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, "Smart Questions", ln=1)
+        pdf.set_font("Arial", "", 11)
+        for paragraph in questions.split("
+"):
+            for line in textwrap.wrap(paragraph, width=90):
+                pdf.multi_cell(0, 6, line)
+        # Output PDF
         buf = BytesIO()
         pdf.output(buf)
         buf.seek(0)

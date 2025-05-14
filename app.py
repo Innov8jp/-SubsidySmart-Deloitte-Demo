@@ -120,27 +120,26 @@ if enable_camera:
         )
     img_file = img_front or img_rear
 
-       if img_file:
-        st.image(img_file, use_column_width=True)
-        img_bytes = (
-            img_file.getvalue()
-            if hasattr(img_file, "getvalue")
-            else img_file.read()
+      if img_file:
+    st.image(img_file, use_column_width=True)
+    img_bytes = (
+        img_file.getvalue()
+        if hasattr(img_file, "getvalue")
+        else img_file.read()
+    )
+
+    with st.spinner("Extracting text…"):
+        resp = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role": "user",
+                "content": "Please extract all the text from this document image."
+            }],
+            files=[{"filename": "doc.jpg", "data": img_bytes}]
         )
 
-        with st.spinner("Extracting text…"):
-            resp = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[{
-                    "role": "user",
-                    "content": "Please extract all the text from this document image."
-                }],
-                files=[{"filename": "doc.jpg", "data": img_bytes}]
-            )
-
-        st.subheader("📝 Extracted Text")
-        st.text_area("", resp.choices[0].message.content, height=300)
-
+    st.subheader("📝 Extracted Text")
+    st.text_area("", resp.choices[0].message.content, height=300)
 
 # --- FILE UPLOAD ---
 with st.expander(t("📁 Upload Documents (PDF, TXT)", "📁 ドキュメントをアップロード")):

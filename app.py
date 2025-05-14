@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Enhanced UAT-Passed Version
+# DeloitteSmart™ AI Assistant – Enhanced UAT-Passed Version with Camera OCR Q&A Integration
 
 import streamlit as st
 import openai
@@ -47,6 +47,7 @@ def init_session():
         "document_content": {},
         "document_summary": {},
         "uploaded_filenames": [],
+        "camera_ocr": None,
         "feedback_entries": []
     }
     for key, val in defaults.items():
@@ -84,14 +85,16 @@ if enable_camera:
         st.image(img, use_container_width=True)
         img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
         with st.spinner(t("Extracting text…", "テキスト抽出中…")):
-            resp = openai.chat.completions.create(
+            ocr_resp = openai.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": "Extract all text from this image."}],
                 files=[{"filename": "doc.jpg", "data": img_bytes}]
             )
-        text = resp.choices[0].message.content
+        ocr_text = ocr_resp.choices[0].message.content
+        # Save OCR text for Q&A
+        st.session_state.camera_ocr = ocr_text
         st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
-        st.text_area("", text, height=300)
+        st.text_area("", ocr_text, height=300)
 
 # --- DOCUMENT UPLOAD & SUMMARY ---
 with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約")):
@@ -125,7 +128,7 @@ with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメント
             except Exception as e:
                 st.error(f"Error processing {name}: {e}")
 
-# Display summaries
+# --- DISPLAY SUMMARIES ---
 if st.session_state.document_summary:
     st.subheader(t("📄 Document Summaries & Questions", "📄 ドキュメント要約 & 質問"))
     for name, summ in st.session_state.document_summary.items():
@@ -141,9 +144,14 @@ with st.form("qa_form", clear_on_submit=True):
     ask_btn = cols[1].form_submit_button(t("Ask", "送信"))
 
 if ask_btn and user_q:
-    docs = "\n\n".join(st.session_state.document_content.values())
-    if not docs:
-        st.warning(t("Please upload documents first.", "先にドキュメントをアップロードしてください。"))
+    # Combine uploaded docs and camera OCR
+    sources = list(st.session_state.document_content.values())
+    if st.session_state.camera_ocr:
+        sources.append(st.session_state.camera_ocr)
+    combined = "\n\n".join(sources)
+
+    if not combined:
+        st.warning(t("Please upload documents or capture an image first.", "先にドキュメントをアップロードするか画像を撮影してください。"))
     else:
         st.session_state.chat_history.append({"role": "user", "content": user_q})
         try:
@@ -151,7 +159,7 @@ if ask_btn and user_q:
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a document-savvy AI assistant."},
-                    {"role": "user", "content": f"{docs}\n\nQuestion: {user_q}"}
+                    {"role": "user", "content": f"{combined}\n\nQuestion: {user_q}"}
                 ]
             )
             answer = qa_resp.choices[0].message.content
@@ -168,8 +176,8 @@ if st.session_state.chat_history:
             st.markdown(msg["content"])
 
 # --- FEEDBACK ---
-st.write("**Was this helpful?**")
-col_yes, col_no = st.columns([1,1])
+st.write(t("**Was this helpful?**", "**役立ちましたか？**"))
+col_yes, col_no = st.columns([1, 1])
 if col_yes.button("👍 Yes"):
     st.success(t("Thanks for your feedback!", "フィードバックありがとうございます！"))
 if col_no.button("👎 No"):
@@ -179,5 +187,5 @@ if col_no.button("👎 No"):
 if st.session_state.feedback_entries:
     st.subheader("📬 Submitted Feedback")
     for idx, fb in enumerate(st.session_state.feedback_entries):
-        role_icon = "👍" if fb.get("helpful") else "👎"
-        st.markdown(f"- Entry {idx+1}: {role_icon} @ {fb.get('timestamp')}")
+        icon = "👍" if fb.get("helpful") else "👎"
+        st.markdown(f"- Entry {idx+1}: {icon} @ {fb.get('timestamp')}")

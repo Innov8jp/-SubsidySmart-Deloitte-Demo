@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Enhanced UAT-Passed Version with Camera OCR Q&A Integration
+# DeloitteSmart™ AI Assistant – Enhanced Image Capture & Q&A Integration
 
 import streamlit as st
 import openai
@@ -18,10 +18,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CREDENTIALS & INITIALIZATION ---
+# --- OPENAI INITIALIZATION ---
 openai_api_key = st.secrets.get("OPENAI_API_KEY")
 if not openai_api_key:
-    st.sidebar.error("❌ OpenAI API key not found. Please configure it in Streamlit secrets.")
+    st.sidebar.error("❌ OpenAI API key not found. Configure in Streamlit secrets.")
     st.stop()
 openai.api_key = openai_api_key
 
@@ -32,22 +32,20 @@ lang = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], inde
 st.session_state.language = lang
 
 def t(en: str, jp: str) -> str:
-    """Translation helper based on user's language toggle."""
     return en if st.session_state.language == "English" else jp
 
-# --- SIDEBAR ---
+# --- SIDEBAR BRANDING ---
 st.sidebar.image("deloitte_logo.png", width=200)
 st.sidebar.markdown("**Powered by Innov8**")
-st.sidebar.markdown("Prototype Version 1.0 | Secure & Scalable")
+st.sidebar.markdown("Prototype v1.0 | Secure & Scalable")
 
-# --- SESSION STATE SETUP ---
+# --- SESSION STATE DEFAULTS ---
 def init_session():
     defaults = {
         "chat_history": [],
         "document_content": {},
         "document_summary": {},
         "uploaded_filenames": [],
-        "camera_ocr": None,
         "feedback_entries": []
     }
     for key, val in defaults.items():
@@ -58,19 +56,19 @@ init_session()
 # --- MAIN TITLE ---
 st.title(
     t(
-        "DeloitteSmart™: Your AI Assistant for M&A and Document Insights",
-        "DeloitteSmart™: M&A とドキュメント処理のための AI アシスタント"
+        "DeloitteSmart™: AI Assistant for M&A & Document Insights",
+        "DeloitteSmart™: M&Aおよびドキュメント解析向け AI アシスタント"
     )
 )
 
-# --- CAMERA & OCR DEMO (Optional) ---
+# --- OPTIONAL: CAMERA OCR ---
 enable_camera = st.sidebar.checkbox(t("📸 Enable Camera OCR", "📸 カメラOCRを有効にする"), value=False)
 if enable_camera:
     st.header(t("📸 Document Capture & OCR", "📸 ドキュメント撮影 & OCR"))
     st.markdown(
         t(
-            "On mobile, use Rear Camera tab. On desktop, upload a photo.",
-            "モバイルでは背面カメラタブを使用。デスクトップでは画像をアップロード。"
+            "Use tabs: Front for webcam, Rear for photo upload.",
+            "タブを使用: 前面はウェブカメラ、背面は写真アップロード。"
         )
     )
     front_tab, rear_tab = st.tabs([t("Front Camera", "前面カメラ"), t("Rear Camera", "背面カメラ")])
@@ -82,17 +80,18 @@ if enable_camera:
             type=["png", "jpg", "jpeg"]
         )
     if img:
+        # Display and OCR
         st.image(img, use_container_width=True)
         img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
         with st.spinner(t("Extracting text…", "テキスト抽出中…")):
             ocr_resp = openai.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=[{"role": "user", "content": "Extract all text from this image."}],
-                files=[{"filename": "doc.jpg", "data": img_bytes}]
+                messages=[{"role": "user", "content": "Extract text from this image."}],
+                files=[{"filename": "capture.jpg", "data": img_bytes}]
             )
         ocr_text = ocr_resp.choices[0].message.content
-        # Save OCR text for Q&A
-        st.session_state.camera_ocr = ocr_text
+        # Store OCR as a document for Q&A
+        st.session_state.document_content["Captured Image"] = ocr_text
         st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
         st.text_area("", ocr_text, height=300)
 
@@ -106,8 +105,8 @@ with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメント
     for f in uploaded:
         name = f.name
         if name not in st.session_state.uploaded_filenames:
-            content = ""
             try:
+                content = ""
                 if f.type == "application/pdf":
                     doc = fitz.open(stream=f.read(), filetype="pdf")
                     for page in doc:
@@ -116,53 +115,50 @@ with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメント
                     content = f.read().decode("utf-8")
                 st.session_state.document_content[name] = content
                 st.session_state.uploaded_filenames.append(name)
-                # Summarize and generate questions
-                summary_resp = openai.chat.completions.create(
+                # Summarize
+                sum_resp = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a helpful AI assistant."},
                         {"role": "user", "content": f"Summarize and ask 5 questions based on the document:\n\n{content}"}
                     ]
                 )
-                st.session_state.document_summary[name] = summary_resp.choices[0].message.content
+                st.session_state.document_summary[name] = sum_resp.choices[0].message.content
             except Exception as e:
                 st.error(f"Error processing {name}: {e}")
 
 # --- DISPLAY SUMMARIES ---
 if st.session_state.document_summary:
     st.subheader(t("📄 Document Summaries & Questions", "📄 ドキュメント要約 & 質問"))
-    for name, summ in st.session_state.document_summary.items():
+    for name, summary in st.session_state.document_summary.items():
         st.markdown(f"**🗂️ {name}**")
-        st.markdown(summ)
+        st.markdown(summary)
         st.markdown("---")
 
 # --- INTERACTIVE Q&A ---
 st.subheader(t("Ask Your Question", "質問を入力"))
 with st.form("qa_form", clear_on_submit=True):
     cols = st.columns([8, 2])
-    user_q = cols[0].text_input(t("Enter question...", "質問を入力..."))
+    user_q = cols[0].text_input(t("Enter your question...", "質問を入力..."))
     ask_btn = cols[1].form_submit_button(t("Ask", "送信"))
 
 if ask_btn and user_q:
-    # Combine uploaded docs and camera OCR
-    sources = list(st.session_state.document_content.values())
-    if st.session_state.camera_ocr:
-        sources.append(st.session_state.camera_ocr)
-    combined = "\n\n".join(sources)
-
+    # Combine all document contents (including captured image)
+    docs = list(st.session_state.document_content.values())
+    combined = "\n\n".join(docs)
     if not combined:
-        st.warning(t("Please upload documents or capture an image first.", "先にドキュメントをアップロードするか画像を撮影してください。"))
+        st.warning(t("Please provide a document or capture an image first.", "先にドキュメント提供または画像撮影をしてください。"))
     else:
         st.session_state.chat_history.append({"role": "user", "content": user_q})
         try:
-            qa_resp = openai.chat.completions.create(
+            qa = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a document-savvy AI assistant."},
                     {"role": "user", "content": f"{combined}\n\nQuestion: {user_q}"}
                 ]
             )
-            answer = qa_resp.choices[0].message.content
+            answer = qa.choices[0].message.content
             st.session_state.chat_history.append({"role": "assistant", "content": answer})
             st.markdown(answer)
         except OpenAIError as e:
@@ -177,7 +173,7 @@ if st.session_state.chat_history:
 
 # --- FEEDBACK ---
 st.write(t("**Was this helpful?**", "**役立ちましたか？**"))
-col_yes, col_no = st.columns([1, 1])
+col_yes, col_no = st.columns([1,1])
 if col_yes.button("👍 Yes"):
     st.success(t("Thanks for your feedback!", "フィードバックありがとうございます！"))
 if col_no.button("👎 No"):
@@ -186,6 +182,6 @@ if col_no.button("👎 No"):
 # --- FEEDBACK REVIEW ---
 if st.session_state.feedback_entries:
     st.subheader("📬 Submitted Feedback")
-    for idx, fb in enumerate(st.session_state.feedback_entries):
+    for i, fb in enumerate(st.session_state.feedback_entries):
         icon = "👍" if fb.get("helpful") else "👎"
-        st.markdown(f"- Entry {idx+1}: {icon} @ {fb.get('timestamp')}")
+        st.markdown(f"- Entry {i+1}: {icon} @ {fb.get('timestamp')}")

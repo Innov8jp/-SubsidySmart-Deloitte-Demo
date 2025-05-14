@@ -206,4 +206,7 @@ if st.session_state.chat_history:
 if st.session_state.feedback_entries:
     st.subheader("📬 Submitted Feedback")
     for fb in st.session_state.feedback_entries:
-        st.markdown(f"- Chat #{fb['index'] + 1} — {'👍 Helpful' if fb['helpful'] else '👎 Not Helpful'} @ {fb['timestamp']}"```]}
+        st.markdown(
+            f"- Chat #{fb['index'] + 1} — {'👍 Helpful' if fb['helpful'] else '👎 Not Helpful'} @ {fb['timestamp']}"
+        )
+

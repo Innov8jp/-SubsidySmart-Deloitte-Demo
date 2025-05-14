@@ -55,7 +55,7 @@ def init_session():
             st.session_state[key] = val
 init_session()
 
-# --- MODE & CAMERA ---            
+# --- MODE & CAMERA ---
 st.markdown("### Mode Selection and Camera Toggle")
 col1, col2 = st.columns([3, 1])
 with col1:
@@ -74,6 +74,38 @@ st.title(
     )
 )
 
+if enable_camera:
+    st.header("📸 Document Capture & OCR")
+    tab_front, tab_rear = st.tabs(["Front Camera", "Rear Camera"])
+    with tab_front:
+        img_front = st.camera_input("Capture using front camera")
+    with tab_rear:
+        img_rear = st.file_uploader(
+            "Capture/upload rear-camera image",
+            type=["png", "jpg", "jpeg"]
+        )
+    img_file = img_front or img_rear
+
+    if img_file:
+        st.image(img_file, use_column_width=True)
+        img_bytes = img_file.getvalue() if hasattr(img_file, "getvalue") else img_file.read()
+        with st.spinner("Extracting text…"):
+            resp = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{
+                    "role": "user",
+                    "content": "Please extract all the text from this document image."
+                }],
+                files=[{"filename": "doc.jpg", "data": img_bytes}]
+          st.subheader("📝 Extracted Text")
+st.text_area("", resp.choices[0].message.content, height=300)
+
+st.title(
+    t(
+        "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
+        "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
+    )
+)
 if enable_camera:
     st.header("📸 Document Capture & OCR")
     # Front vs. Rear camera tabs

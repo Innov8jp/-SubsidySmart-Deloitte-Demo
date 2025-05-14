@@ -91,7 +91,7 @@ if enable_camera:
         img_bytes = img_file.getvalue() if hasattr(img_file, "getvalue") else img_file.read()
 
         with st.spinner("Extracting text…"):
-            resp = openai.chat.completions.create(
+            resp = openai.ChatCompletion.create(
                 model="gpt-4o-mini",
                 messages=[{
                     "role": "user",
@@ -131,7 +131,7 @@ with st.expander(t("📁 Upload Documents (PDF, TXT)", "📁 ドキュメント�
                 if openai_api_key:
                     try:
                         prompt = f"You are a consultant. Summarize and generate 5 questions.\n\nDocument:\n{file_text}"
-                        response = openai.chat.completions.create(
+                        response = openai.ChatCompletion.create(
                             model="gpt-3.5-turbo",
                             messages=[
                                 {"role": "system", "content": "You are a helpful AI assistant."},
@@ -173,7 +173,7 @@ if submitted and user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         try:
             prompt = f"You are an AI agent. Answer the question using the following documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
-            response = openai.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a document-savvy AI assistant."},
@@ -206,4 +206,4 @@ if st.session_state.chat_history:
 if st.session_state.feedback_entries:
     st.subheader("📬 Submitted Feedback")
     for fb in st.session_state.feedback_entries:
-        st.markdown(f"- Chat #{fb['index'] + 1} — {'👍 Helpful' if fb['helpful'] else '👎 Not Helpful'} @ {fb['timestamp']}")
+        st.markdown(f"- Chat #{fb['index'] + 1} — {'👍 Helpful' if fb['helpful'] else '👎 Not Helpful'} @ {fb['timestamp']}"```]}

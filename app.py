@@ -79,27 +79,30 @@ with col_main:
         with tab_upload:
             img = st.file_uploader(
                 t("Upload image file", "画像ファイルをアップロード"),
-                type=["png", "jpg", "jpeg"]
+                type=["png","jpg","jpeg"]
             )
+
         if img:
             st.image(img, use_container_width=True)
-            img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
-            with st.spinner(t("Extracting text…", "テキスト抽出中…")):
-                try:
-                    resp = openai.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[{"role":"user","content":"Extract all text from this image."}],
-                        files=[{"filename":"capture.jpg","data":img_bytes}]
-                    )
-                    text = resp.choices[0].message.content
-                except Exception:
-                    st.error(t("OCR extraction failed.", "OCR抽出に失敗しました。"))
-                    text = ""
-            st.session_state.document_content["Captured Image"] = text
-            st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
-            st.text_area("", text, height=300)
-
-    # --- FILE UPLOAD & SUMMARY ---
+            # Add explicit button to trigger OCR
+            if st.button(t("Extract Text from Image", "画像からテキストを抽出")):
+                img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
+                with st.spinner(t("Extracting text…", "テキスト抽出中…")):
+                    try:
+                        resp = openai.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[{"role":"user","content":"Extract all text from this image."}],
+                            files=[{"filename":"capture.jpg","data":img_bytes}]
+                        )
+                        text = resp.choices[0].message.content
+                    except Exception:
+                        st.error(t("OCR extraction failed.", "OCR抽出に失敗しました。"))
+                        text = ""
+                # Store and display
+                st.session_state.document_content["Captured Image"] = text
+                st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
+                st.text_area("", text, height=300)
+# --- FILE UPLOAD & SUMMARY ---
     with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約")):
         uploads = st.file_uploader(
             t("Select PDF/TXT files", "PDF/TXTを選択"),

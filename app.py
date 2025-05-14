@@ -135,6 +135,7 @@ if enable_camera:
             }],
             files=[{"filename": "doc.jpg", "data": img_bytes}]
         )
+
         st.subheader("📝 Extracted Text")
         st.text_area("", resp.choices[0].message.content, height=300)
 

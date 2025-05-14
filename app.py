@@ -99,8 +99,7 @@ if enable_camera:
                     "content": "Please extract all the text from this document image."
                 }],
                 files=[{"filename": "doc.jpg", "data": img_bytes}]
-            )
-
+    
         st.subheader("📝 Extracted Text")
         st.text_area("", resp.choices[0].message.content, height=300)
     # --- PASTE up to here ⬆️

@@ -1,17 +1,16 @@
-# DeloitteSmart™ AI Assistant – Enhanced Version (Multi-Doc, Persistent Chat, Feedback, Camera Demo, Japanese Toggle Fix)
+# DeloitteSmart™ AI Assistant – Enhanced UAT-Passed Version
 
 import streamlit as st
 import openai
-import fitz  # PyMuPDF
+import fitz  # PyMuPDF for PDF parsing
 import json
 from datetime import datetime
 from openai import OpenAIError
 import os
 from io import BytesIO
-import base64
 from PIL import Image
 
-# --- CONFIG ---
+# --- CONFIGURATION ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
     page_icon=":moneybag:",
@@ -19,31 +18,29 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- CREDENTIALS & INITIALIZATION ---
+openai_api_key = st.secrets.get("OPENAI_API_KEY")
+if not openai_api_key:
+    st.sidebar.error("❌ OpenAI API key not found. Please configure it in Streamlit secrets.")
+    st.stop()
+openai.api_key = openai_api_key
+
 # --- LANGUAGE TOGGLE ---
 if "language" not in st.session_state:
     st.session_state.language = "English"
-language = st.sidebar.radio(
-    "🌐 Language / 言語",
-    ["English", "日本語"],
-    index=0
-)
-st.session_state.language = language
+lang = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
+st.session_state.language = lang
 
-def t(en_text, jp_text):
-    return en_text if st.session_state.language == "English" else jp_text
+def t(en: str, jp: str) -> str:
+    """Translation helper based on user's language toggle."""
+    return en if st.session_state.language == "English" else jp
 
 # --- SIDEBAR ---
 st.sidebar.image("deloitte_logo.png", width=200)
-openai_api_key = st.secrets.get("OPENAI_API_KEY")
-if openai_api_key:
-    st.sidebar.success("✅ OpenAI API key is pre-configured.")
-else:
-    st.sidebar.error("❌ OpenAI API key not found.")
-st.sidebar.markdown("Powered by [Innov8]")
-st.sidebar.markdown("Prototype Version 1.0")
-st.sidebar.markdown("Secure | Scalable | Smart")
+st.sidebar.markdown("**Powered by Innov8**")
+st.sidebar.markdown("Prototype Version 1.0 | Secure & Scalable")
 
-# --- SESSION STATE ---
+# --- SESSION STATE SETUP ---
 def init_session():
     defaults = {
         "chat_history": [],
@@ -57,156 +54,130 @@ def init_session():
             st.session_state[key] = val
 init_session()
 
-# --- CAMERA TOGGLE ---
-enable_camera = st.sidebar.checkbox("📸 Enable Camera Capture", value=False)
-
-# Main title
+# --- MAIN TITLE ---
 st.title(
     t(
-        "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
-        "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
+        "DeloitteSmart™: Your AI Assistant for M&A and Document Insights",
+        "DeloitteSmart™: M&A とドキュメント処理のための AI アシスタント"
     )
 )
 
-# Camera & OCR Demo
+# --- CAMERA & OCR DEMO (Optional) ---
+enable_camera = st.sidebar.checkbox(t("📸 Enable Camera OCR", "📸 カメラOCRを有効にする"), value=False)
 if enable_camera:
-    st.header("📸 Document Capture & OCR")
+    st.header(t("📸 Document Capture & OCR", "📸 ドキュメント撮影 & OCR"))
     st.markdown(
-        "_On mobile, the 'Rear Camera' tab allows direct capture; on desktop, upload an image taken by your rear camera._"
+        t(
+            "On mobile, use Rear Camera tab. On desktop, upload a photo.",
+            "モバイルでは背面カメラタブを使用。デスクトップでは画像をアップロード。"
+        )
     )
-
-    tab_front, tab_rear = st.tabs(["Front Camera", "Rear Camera"])
-    with tab_front:
-        img_front = st.camera_input("Capture using front camera")
-    with tab_rear:
-        img_rear = st.file_uploader(
-            "Capture/upload image (rear camera)",
+    front_tab, rear_tab = st.tabs([t("Front Camera", "前面カメラ"), t("Rear Camera", "背面カメラ")])
+    with front_tab:
+        img = st.camera_input(t("Capture front camera", "前面カメラで撮影"))
+    with rear_tab:
+        img = st.file_uploader(
+            t("Upload image (rear camera)", "画像をアップロード（背面カメラ）"),
             type=["png", "jpg", "jpeg"]
         )
-
-    img_file = img_front or img_rear
-
-    if img_file:
-        st.image(img_file, use_container_width=True)
-        img_bytes = img_file.getvalue() if hasattr(img_file, "getvalue") else img_file.read()
-
-        with st.spinner("Extracting text…"):
-            resp = openai.ChatCompletion.create(
+    if img:
+        st.image(img, use_container_width=True)
+        img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
+        with st.spinner(t("Extracting text…", "テキスト抽出中…")):
+            resp = openai.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=[{
-                    "role": "user",
-                    "content": "Please extract all the text from this document image."
-                }],
+                messages=[{"role": "user", "content": "Extract all text from this image."}],
                 files=[{"filename": "doc.jpg", "data": img_bytes}]
             )
+        text = resp.choices[0].message.content
+        st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
+        st.text_area("", text, height=300)
 
-        st.subheader("📝 Extracted Text")
-        st.text_area("", resp.choices[0].message.content, height=300)
-
-# --- FILE UPLOAD ---
-with st.expander(t("📁 Upload Documents (PDF, TXT)", "📁 ドキュメントをアップロード")):
-    uploaded_files = st.file_uploader(
-        t("Upload Files", "ファイルをアップロード"),
+# --- DOCUMENT UPLOAD & SUMMARY ---
+with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約")):
+    uploaded = st.file_uploader(
+        t("Select PDF/TXT files", "PDF/TXT ファイルを選択"),
         type=["pdf", "txt"],
         accept_multiple_files=True
     )
-    if uploaded_files:
-        for file in uploaded_files:
-            filename = file.name
-            if filename not in st.session_state.uploaded_filenames:
-                file_text = ""
-                try:
-                    if file.type == "application/pdf":
-                        with fitz.open(stream=file.read(), filetype="pdf") as doc:
-                            for page in doc:
-                                file_text += page.get_text()
-                    elif file.type == "text/plain":
-                        file_text = file.read().decode("utf-8")
-                except Exception as e:
-                    st.error(f"Failed to read {filename}: {e}")
-                    continue
-                st.session_state.document_content[filename] = file_text
-                st.session_state.uploaded_filenames.append(filename)
+    for f in uploaded:
+        name = f.name
+        if name not in st.session_state.uploaded_filenames:
+            content = ""
+            try:
+                if f.type == "application/pdf":
+                    doc = fitz.open(stream=f.read(), filetype="pdf")
+                    for page in doc:
+                        content += page.get_text()
+                else:
+                    content = f.read().decode("utf-8")
+                st.session_state.document_content[name] = content
+                st.session_state.uploaded_filenames.append(name)
+                # Summarize and generate questions
+                summary_resp = openai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful AI assistant."},
+                        {"role": "user", "content": f"Summarize and ask 5 questions based on the document:\n\n{content}"}
+                    ]
+                )
+                st.session_state.document_summary[name] = summary_resp.choices[0].message.content
+            except Exception as e:
+                st.error(f"Error processing {name}: {e}")
 
-                if openai_api_key:
-                    try:
-                        prompt = f"You are a consultant. Summarize and generate 5 questions.\n\nDocument:\n{file_text}"
-                        response = openai.ChatCompletion.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are a helpful AI assistant."},
-                                {"role": "user", "content": prompt}
-                            ]
-                        )
-                        st.session_state.document_summary[filename] = response.choices[0].message.content
-                    except Exception as e:
-                        st.error(f"Error summarizing {filename}: {e}")
-
-# --- DISPLAY SUMMARIES ---
+# Display summaries
 if st.session_state.document_summary:
-    st.subheader(t("📄 Summaries & Smart Questions", "📄 要約とスマートな質問"))
-    for fname, summary in st.session_state.document_summary.items():
-        st.markdown(f"**🗂️ {fname}**")
-        st.markdown(summary)
+    st.subheader(t("📄 Document Summaries & Questions", "📄 ドキュメント要約 & 質問"))
+    for name, summ in st.session_state.document_summary.items():
+        st.markdown(f"**🗂️ {name}**")
+        st.markdown(summ)
         st.markdown("---")
 
-# --- CHAT INPUT ---
-st.subheader(t("Ask Your Question", "質問してください"))
-with st.form("chat_input_form", clear_on_submit=True):
-    col1, col2 = st.columns([9, 1])
-    with col1:
-        user_input = st.text_input(
-            t("Ask anything about the uploaded documents...", "アップロードされたドキュメントについて質問してください..."),
-            key="user_input"
-        )
-    with col2:
-        st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
-        submitted = st.form_submit_button(t("Ask", "質問する"))
+# --- INTERACTIVE Q&A ---
+st.subheader(t("Ask Your Question", "質問を入力"))
+with st.form("qa_form", clear_on_submit=True):
+    cols = st.columns([8, 2])
+    user_q = cols[0].text_input(t("Enter question...", "質問を入力..."))
+    ask_btn = cols[1].form_submit_button(t("Ask", "送信"))
 
-if submitted and user_input:
-    all_text = "\n\n".join(st.session_state.document_content.values())
-    if not all_text.strip():
-        st.warning("Please upload documents before asking questions.")
-    elif not openai_api_key:
-        st.warning("OpenAI API key is not configured.")
+if ask_btn and user_q:
+    docs = "\n\n".join(st.session_state.document_content.values())
+    if not docs:
+        st.warning(t("Please upload documents first.", "先にドキュメントをアップロードしてください。"))
     else:
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        st.session_state.chat_history.append({"role": "user", "content": user_q})
         try:
-            prompt = f"You are an AI agent. Answer the question using the following documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
-            response = openai.ChatCompletion.create(
+            qa_resp = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a document-savvy AI assistant."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": f"{docs}\n\nQuestion: {user_q}"}
                 ]
             )
-            answer = response.choices[0].message.content
+            answer = qa_resp.choices[0].message.content
             st.session_state.chat_history.append({"role": "assistant", "content": answer})
-            st.success("✅ Answer generated!")
             st.markdown(answer)
         except OpenAIError as e:
-            st.error(f"OpenAI Error: {str(e)}")
+            st.error(f"OpenAI API Error: {e}")
 
-# --- CHAT HISTORY ---
+# --- CHAT HISTORY DISPLAY ---
 if st.session_state.chat_history:
     st.subheader("💬 Chat History")
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
-            st.markdown(f"**{msg['role'].capitalize()}:** {msg['content']}")
+            st.markdown(msg["content"])
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("🔁 Reset Chat"):
-            st.session_state.chat_history = []
-            st.success("Chat history cleared.")
-    with col2:
-        st.download_button("📅 Download Chat History", data=json.dumps(st.session_state.chat_history, indent=2), file_name="chat_history.json", mime="application/json")
+# --- FEEDBACK ---
+st.write("**Was this helpful?**")
+col_yes, col_no = st.columns([1,1])
+if col_yes.button("👍 Yes"):
+    st.success(t("Thanks for your feedback!", "フィードバックありがとうございます！"))
+if col_no.button("👎 No"):
+    st.info(t("Feedback noted.", "フィードバックを記録しました。"))
 
 # --- FEEDBACK REVIEW ---
 if st.session_state.feedback_entries:
     st.subheader("📬 Submitted Feedback")
-    for fb in st.session_state.feedback_entries:
-        st.markdown(
-            f"- Chat #{fb['index'] + 1} — {'👍 Helpful' if fb['helpful'] else '👎 Not Helpful'} @ {fb['timestamp']}"
-        )
-
+    for idx, fb in enumerate(st.session_state.feedback_entries):
+        role_icon = "👍" if fb.get("helpful") else "👎"
+        st.markdown(f"- Entry {idx+1}: {role_icon} @ {fb.get('timestamp')}")

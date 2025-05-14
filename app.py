@@ -72,7 +72,6 @@ st.title(
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
         "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
     )
-)
 
 if enable_camera:
     st.header("📸 Document Capture & OCR")
@@ -111,7 +110,7 @@ if enable_camera:
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
         "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
     )
-)
+
 if enable_camera:
     st.header("📸 Document Capture & OCR")
     # Front vs. Rear camera tabs

@@ -76,6 +76,8 @@ st.title(
 
 if enable_camera:
     st.header("📸 Document Capture & OCR")
+
+    # Front vs. Rear camera tabs
     tab_front, tab_rear = st.tabs(["Front Camera", "Rear Camera"])
     with tab_front:
         img_front = st.camera_input("Capture using front camera")
@@ -84,27 +86,26 @@ if enable_camera:
             "Capture/upload rear-camera image",
             type=["png", "jpg", "jpeg"]
         )
+
     img_file = img_front or img_rear
 
-       # --- PASTE this corrected block ⬇️
-   if img_file:
-    st.image(img_file, use_column_width=True)
+    if img_file:
+        st.image(img_file, use_column_width=True)
+        img_bytes = img_file.getvalue() if hasattr(img_file, "getvalue") else img_file.read()
 
-    # Simplified byte read—no extra parentheses
-    img_bytes = img_file.getvalue() if hasattr(img_file, "getvalue") else img_file.read()
+        with st.spinner("Extracting text…"):
+            resp = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{
+                    "role": "user",
+                    "content": "Please extract all the text from this document image."
+                }],
+                files=[{"filename": "doc.jpg", "data": img_bytes}]
+            )
 
-    with st.spinner("Extracting text…"):
-        resp = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{
-                "role": "user",
-                "content": "Please extract all the text from this document image."
-            }],
-            files=[{"filename": "doc.jpg", "data": img_bytes}],
-        )
+        st.subheader("📝 Extracted Text")
+        st.text_area("", resp.choices[0].message.content, height=300)
 
-    st.subheader("📝 Extracted Text")
-    st.text_area("", resp.choices[0].message.content, height=300)
 
     # --- PASTE up to here ⬆️
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",

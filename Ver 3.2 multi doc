@@ -87,38 +87,29 @@ with col_main:
         if img:
             st.image(img, use_container_width=True)
             if st.button(t("Extract Text from Image", "画像からテキストを抽出")):
-                img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
-                with st.spinner(t("Extracting text…", "テキスト抽出中…")):
-                    # AI-based OCR
-                    try:
-                        resp = openai.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[{"role":"user","content":"Extract all text from this image."}],
-                            files=[{"filename":"capture.jpg","data":img_bytes}]
-                        )
-                        ai_text = resp.choices[0].message.content.strip()
-                    except OpenAIError as e:
-                        st.error(t("OCR extraction failed: ", "OCR抽出に失敗しました: ") + str(e))
-                        ai_text = ""
-                    # Fallback to local OCR if no AI text
-                    text = ai_text
-                    if not text:
-                        try:
-                            import pytesseract
-                            from PIL import Image as PILImage
-                            img_pil = PILImage.open(BytesIO(img_bytes))
-                            text = pytesseract.image_to_string(img_pil)
-                        except ImportError:
-                            st.warning(t(
-                                "No text extracted by AI; install pytesseract for fallback.",
-                                "AIでテキストが抽出されませんでした。pytesseractをインストールしてください。"
-                            ))
-                        except Exception as oe:
-                            st.error(t("Local OCR fallback failed.", "ローカルOCRフォールバックに失敗しました。"))
-                    # Store and display
-                    st.session_state.document_content["Captured Image"] = text
-                    st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
-                    st.text_area("", text, height=300)
+                try:
+                    import pytesseract
+                    from PIL import Image as PILImage
+                    from io import BytesIO as _BytesIO
+                    img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
+                    img_pil = PILImage.open(_BytesIO(img_bytes))
+                    text = pytesseract.image_to_string(img_pil)
+                except ModuleNotFoundError:
+                    st.error(t(
+                        "pytesseract not installed. Please run `pip install pytesseract`.",
+                        "pytesseractがインストールされていません。`pip install pytesseract`を実行してください。"
+                    ))
+                    text = ""
+                except Exception as e:
+                    st.error(t(
+                        f"OCR failed: {e}",
+                        f"OCRに失敗しました: {e}"
+                    ))
+                    text = ""
+                # Store and display
+                st.session_state.document_content["Captured Image"] = text
+                st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
+                st.text_area("", text, height=300)
 # UPLOAD & SUMMARY
     with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約"), expanded=True):
         uploads = st.file_uploader(

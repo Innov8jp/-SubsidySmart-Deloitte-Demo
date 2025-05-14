@@ -86,9 +86,11 @@ if enable_camera:
         )
     img_file = img_front or img_rear
 
+       # --- PASTE this corrected block ⬇️
     if img_file:
         st.image(img_file, use_column_width=True)
         img_bytes = img_file.getvalue() if hasattr(img_file, "getvalue") else img_file.read()
+
         with st.spinner("Extracting text…"):
             resp = openai.ChatCompletion.create(
                 model="gpt-4o-mini",
@@ -97,11 +99,11 @@ if enable_camera:
                     "content": "Please extract all the text from this document image."
                 }],
                 files=[{"filename": "doc.jpg", "data": img_bytes}]
-          st.subheader("📝 Extracted Text")
-st.text_area("", resp.choices[0].message.content, height=300)
+            )
 
-st.title(
-    t(
+        st.subheader("📝 Extracted Text")
+        st.text_area("", resp.choices[0].message.content, height=300)
+    # --- PASTE up to here ⬆️
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
         "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
     )

@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Final UAT-Passed Version with Reporting & Analytics
+# DeloitteSmart™ AI Assistant – Final UAT-Passed Version with True Camera Selection & Q&A Integration
 
 import streamlit as st
 import openai
@@ -69,15 +69,26 @@ if enable_cam:
     cam_idx = st.selectbox(
         t("Camera Device", "カメラデバイス"),
         options=[0, 1],
-        format_func=lambda i: t("Front Camera", "前面カメラ") if i == 0 else t("Rear Camera", "背面カメラ")
+        format_func=lambda i: t("Front Camera", "前面カメラ") if i == 0 else t("Rear Camera", "背面カメラ"),
+        key="camera_device"
     )
-    webrtc_ctx = webrtc_streamer(
-        key="camera", mode=WebRtcMode.SENDRECV,
-        video_device_index=cam_idx,
-        media_stream_constraints={"video": True, "audio": False},
-        async_processing=False
-    )
-    if webrtc_ctx.video_receiver:
+    # Use streamlit-webrtc with selected device
+    try:
+        webrtc_ctx = webrtc_streamer(
+            key="camera",
+            mode=WebRtcMode.SENDRECV,
+            video_device_index=cam_idx,
+            async_processing=False
+        )
+    except Exception:
+        st.warning(t(
+            "Selected camera not available. Please capture/upload an image instead.",
+            "選択したカメラが利用できません。代わりに画像を撮影またはアップロードしてください。"
+        ))
+        webrtc_ctx = None
+
+    # If camera initialized and receiving frames
+    if webrtc_ctx and webrtc_ctx.video_receiver:
         frame = webrtc_ctx.video_receiver.get_frame()
         img = frame.to_image()
         st.image(img, use_container_width=True)
@@ -86,12 +97,16 @@ if enable_cam:
             img.save(buf, format="JPEG")
             data = buf.getvalue()
             with st.spinner(t("Extracting text…", "テキスト抽出中…")):
-                resp = openai.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role":"user","content":"Extract text from this image."}],
-                    files=[{"filename":"capture.jpg","data":data}]
-                )
-            text = resp.choices[0].message.content
+                try:
+                    resp = openai.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role":"user","content":"Extract text from this image."}],
+                        files=[{"filename":"capture.jpg","data":data}]
+                    )
+                    text = resp.choices[0].message.content
+                except Exception:
+                    st.error(t("OCR extraction failed.", "OCR抽出に失敗しました。"))
+                    text = ""
             st.session_state.document_content["Captured Image"] = text
             st.subheader(t("📝 OCR Text", "📝 OCRテキスト"))
             st.text_area("", text, height=300)
@@ -105,8 +120,8 @@ with st.expander(t("📁 Upload & Summarize", "📁 アップロードと要約"
     for f in uploads:
         name = f.name
         if name not in st.session_state.uploaded_filenames:
-            content = ""
             try:
+                content = ""
                 if f.type == "application/pdf":
                     doc = fitz.open(stream=f.read(), filetype="pdf")
                     for p in doc: content += p.get_text()
@@ -114,7 +129,6 @@ with st.expander(t("📁 Upload & Summarize", "📁 アップロードと要約"
                     content = f.read().decode()
                 st.session_state.document_content[name] = content
                 st.session_state.uploaded_filenames.append(name)
-                # summary
                 sumr = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -172,7 +186,6 @@ st.subheader(t("Generate Report & Dashboard","レポートとダッシュボー�
 if st.button(t("Build Report","レポート作成")):
     docs = st.session_state.document_content
     combined = "\n\n".join([f"Document: {d}\n{c}" for d,c in docs.items()])
-    # Executive summary
     sumr = openai.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -181,7 +194,6 @@ if st.button(t("Build Report","レポート作成")):
         ]
     )
     exec_sum = sumr.choices[0].message.content
-    # Smart questions
     qst = openai.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -190,18 +202,13 @@ if st.button(t("Build Report","レポート作成")):
         ]
     )
     questions = qst.choices[0].message.content
-    # Assemble markdown report
-    report = f"# Consolidated Report\n\n"
-    report += "## Executive Summary\n" + exec_sum + "\n\n"
-    report += "## Smart Questions\n" + questions + "\n\n"
-    # Download
+    report = f"# Consolidated Report\n\n## Executive Summary\n{exec_sum}\n\n## Smart Questions\n{questions}\n"
     st.download_button(
         t("Download Report","レポートをダウンロード"),
         data=report,
         file_name="DeloitteSmart_Report.md",
         mime="text/markdown"
     )
-    # Analytics dashboard
     yes = sum(1 for f in st.session_state.feedback_entries if f.get("helpful"))
     no = sum(1 for f in st.session_state.feedback_entries if not f.get("helpful"))
     st.subheader(t("Feedback Analytics","フィードバック分析"))

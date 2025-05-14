@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Final UAT-Passed Version with Sidebar Analytics & PDF Reporting
+# DeloitteSmart™ AI Assistant – Final UAT-Passed Version with Sidebar Reporting & Chat Fixes
 
 import streamlit as st
 import openai
@@ -7,7 +7,7 @@ from datetime import datetime
 from openai import OpenAIError
 from io import BytesIO
 from PIL import Image
-from fpdf import FPDF  # for PDF report generation
+from fpdf import FPDF
 
 # --- CONFIGURATION ---
 st.set_page_config(
@@ -43,18 +43,16 @@ st.sidebar.markdown("**Powered by Innov8**")
 st.sidebar.markdown("Version 1.0 | Secure & Scalable")
 
 # --- SESSION DEFAULTS ---
-def init_session():
-    defaults = {
-        "chat_history": [],
-        "document_content": {},
-        "document_summary": {},
-        "uploaded_filenames": [],
-        "feedback_entries": []
-    }
-    for k, v in defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-init_session()
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "document_content" not in st.session_state:
+    st.session_state.document_content = {}
+if "document_summary" not in st.session_state:
+    st.session_state.document_summary = {}
+if "uploaded_filenames" not in st.session_state:
+    st.session_state.uploaded_filenames = []
+if "feedback_entries" not in st.session_state:
+    st.session_state.feedback_entries = []
 
 # --- MAIN LAYOUT ---
 col_main, col_sidebar = st.columns([3, 1])
@@ -81,10 +79,8 @@ with col_main:
                 t("Upload image file", "画像ファイルをアップロード"),
                 type=["png","jpg","jpeg"]
             )
-
         if img:
             st.image(img, use_container_width=True)
-            # Add explicit button to trigger OCR
             if st.button(t("Extract Text from Image", "画像からテキストを抽出")):
                 img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
                 with st.spinner(t("Extracting text…", "テキスト抽出中…")):
@@ -95,15 +91,15 @@ with col_main:
                             files=[{"filename":"capture.jpg","data":img_bytes}]
                         )
                         text = resp.choices[0].message.content
-                    except Exception:
-                        st.error(t("OCR extraction failed.", "OCR抽出に失敗しました。"))
+                    except OpenAIError as e:
+                        st.error(t("OCR extraction failed: ", "OCR抽出に失敗しました: ") + str(e))
                         text = ""
-                # Store and display
                 st.session_state.document_content["Captured Image"] = text
                 st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
                 st.text_area("", text, height=300)
-# --- FILE UPLOAD & SUMMARY ---
-    with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約")):
+
+    # --- FILE UPLOAD & SUMMARY ---
+    with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約"), expanded=True):
         uploads = st.file_uploader(
             t("Select PDF/TXT files", "PDF/TXTを選択"),
             type=["pdf","txt"], accept_multiple_files=True
@@ -128,7 +124,7 @@ with col_main:
                         ]
                     )
                     st.session_state.document_summary[name] = sumr.choices[0].message.content
-                except Exception as e:
+                except OpenAIError as e:
                     st.error(f"Error processing {name}: {e}")
 
     # --- DISPLAY SUMMARIES ---
@@ -139,46 +135,54 @@ with col_main:
             st.markdown(summ)
             st.markdown("---")
 
-    # --- INTERACTIVE Q&A ---
-    st.subheader(t("Ask Your Question", "質問を入力"))
-    with st.form("qa_form", clear_on_submit=True):
-        cols = st.columns([8,2])
-        query = cols[0].text_input(t("Enter question...","質問を入力..."))
-        send = cols[1].form_submit_button(t("Ask","送信"))
-    if send and query:
+    # --- INTERACTIVE CHAT INPUT & Q&A ---
+    st.subheader(t("Chat & Ask Questions", "チャット & 質問"))
+    # Use chat_input for consistent experience
+    user_prompt = st.chat_input(t("Type your question...", "質問を入力..."))
+    if user_prompt:
         docs = "\n\n".join(st.session_state.document_content.values())
         if not docs:
-            st.warning(t("Please add or capture a document first.","先にドキュメントを追加または撮影してください。"))
+            st.warning(t("Please add or capture a document first.", "先にドキュメントを追加または撮影してください。"))
         else:
-            st.session_state.chat_history.append({"role":"user","content":query})
+            st.session_state.chat_history.append({"role":"user","content":user_prompt})
             try:
                 resp = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role":"system","content":"You are a knowledgeable AI assistant."},
-                        {"role":"user","content":f"{docs}\n\nQuestion: {query}"}
+                        {"role":"user","content":f"{docs}\n\nQuestion: {user_prompt}"}
                     ]
                 )
                 ans = resp.choices[0].message.content
                 st.session_state.chat_history.append({"role":"assistant","content":ans})
-                st.markdown(ans)
             except OpenAIError as e:
                 st.error(f"OpenAI API Error: {e}")
 
+    # --- DISPLAY CHAT HISTORY & Feedback ---
+    if st.session_state.chat_history:
+        for msg in st.session_state.chat_history:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                if msg["role"] == "assistant":
+                    col1, col2 = st.columns([1,1])
+                    if col1.button("👍", key=f"yes_{len(st.session_state.feedback_entries)}"):
+                        st.session_state.feedback_entries.append({"helpful":True,"timestamp":datetime.now().isoformat()})
+                        st.success(t("Thanks for your feedback!", "フィードバックありがとうございます！"))
+                    if col2.button("👎", key=f"no_{len(st.session_state.feedback_entries)}"):
+                        st.session_state.feedback_entries.append({"helpful":False,"timestamp":datetime.now().isoformat()})
+                        st.info(t("Feedback noted.", "フィードバックを記録しました。"))
+
 # --- SIDEBAR CONTENT: REPORT & ANALYTICS ---
 with col_sidebar:
-    st.header(t("📊 Analytics & Report", "📊 分析 & レポート"))
-    # Feedback analytics
+    st.subheader(t("Analytics & Report", "分析 & レポート"))
     yes = sum(1 for f in st.session_state.feedback_entries if f.get("helpful"))
     no = sum(1 for f in st.session_state.feedback_entries if not f.get("helpful"))
     st.metric(t("Helpful", "好評"), yes)
     st.metric(t("Not Helpful", "不評"), no)
     st.markdown("---")
-    # Generate PDF report
     if st.button(t("Generate PDF Report", "PDF レポートを生成")):
         docs = st.session_state.document_content
         combined = "\n\n".join([f"Document: {d}\n{c}" for d,c in docs.items()])
-        # Executive summary
         sumr = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -187,7 +191,6 @@ with col_sidebar:
             ]
         )
         exec_sum = sumr.choices[0].message.content
-        # Smart questions
         qst = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -196,29 +199,29 @@ with col_sidebar:
             ]
         )
         questions = qst.choices[0].message.content
-        # Build PDF
+        # PDF
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "Consolidated Report", ln=1)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Executive Summary", ln=1)
-        pdf.set_font("Arial", "", 11)
+        pdf.set_font("Arial","B",16)
+        pdf.cell(0,10,"Consolidated Report",ln=1)
+        pdf.set_font("Arial","B",12)
+        pdf.cell(0,8,"Executive Summary",ln=1)
+        pdf.set_font("Arial","",11)
         for line in exec_sum.split("\n"):
-            pdf.multi_cell(0, 6, line)
+            pdf.multi_cell(0,6,line)
         pdf.ln(4)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Smart Questions", ln=1)
-        pdf.set_font("Arial", "", 11)
+        pdf.set_font("Arial","B",12)
+        pdf.cell(0,8,"Smart Questions",ln=1)
+        pdf.set_font("Arial","",11)
         for line in questions.split("\n"):
-            pdf.multi_cell(0, 6, line)
-        # Export
+            pdf.multi_cell(0,6,line)
         buf = BytesIO()
         pdf.output(buf)
         buf.seek(0)
         st.download_button(
-            t("Download PDF Report", "PDF レポートをダウンロード"),
+            t("Download PDF Report","PDF レポートをダウンロード"),
             data=buf,
             file_name="DeloitteSmart_Report.pdf",
             mime="application/pdf"
         )
+# --- END ---

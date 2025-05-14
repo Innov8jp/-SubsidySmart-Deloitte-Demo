@@ -67,12 +67,15 @@ with col1:
 with col2:
     enable_camera = st.checkbox("📸 Enable Camera", value=False)
 
+# Make sure this st.title call is fully closed before the next if-block
 st.title(
     t(
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
         "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
     )
+)
 
+# Now we start a fresh if-block at the top level
 if enable_camera:
     st.header("📸 Document Capture & OCR")
 
@@ -105,8 +108,6 @@ if enable_camera:
         st.subheader("📝 Extracted Text")
         st.text_area("", resp.choices[0].message.content, height=300)
 
-
-    # --- PASTE up to here ⬆️
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
         "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
     )

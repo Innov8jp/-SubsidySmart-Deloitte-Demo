@@ -71,21 +71,22 @@ if enable_cam:
     st.header(t("📸 Document Capture & OCR", "📸 ドキュメント撮影 & OCR"))
     st.markdown(
         t(
-            "Use Front Camera for live capture or upload from Rear Camera tab.",
-            "前面カメラでライブ撮影、または背面カメラ写真をアップロード。"
+            "Use Live Capture for immediate OCR or upload an image file.",
+            "ライブキャプチャで即時OCR、または画像ファイルをアップロード。"
         )
     )
-    tab_front, tab_rear = st.tabs([
-        t("Front Camera", "前面カメラ"),
-        t("Rear Camera", "背面カメラ")
+    tab_live, tab_upload = st.tabs([
+        t("Live Capture", "ライブキャプチャ"),
+        t("Upload Image", "画像をアップロード")
     ])
-    with tab_front:
-        img = st.camera_input(t("Capture with front camera", "前面カメラで撮影"))
-    with tab_rear:
+    with tab_live:
+        img = st.camera_input(t("Capture via camera", "カメラで撮影"))
+    with tab_upload:
         img = st.file_uploader(
-            t("Upload image taken by rear camera", "背面カメラで撮影した画像をアップロード"),
-            type=["png","jpg","jpeg"]
+            t("Upload image file", "画像ファイルをアップロード"),
+            type=["png", "jpg", "jpeg"]
         )
+    # If image provided
     if img:
         st.image(img, use_container_width=True)
         img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
@@ -93,19 +94,17 @@ if enable_cam:
             try:
                 resp = openai.chat.completions.create(
                     model="gpt-4o-mini",
-                    messages=[
-                        {"role":"user","content":"Extract all text from this image."}
-                    ],
+                    messages=[{"role":"user","content":"Extract all text from this image."}],
                     files=[{"filename":"capture.jpg","data":img_bytes}]
                 )
                 text = resp.choices[0].message.content
             except Exception:
                 st.error(t("OCR extraction failed.", "OCR抽出に失敗しました。"))
                 text = ""
+        # Store and display
         st.session_state.document_content["Captured Image"] = text
         st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
         st.text_area("", text, height=300)
-
 # --- FILE UPLOAD & SUMMARY ---
 with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約")):
     uploads = st.file_uploader(

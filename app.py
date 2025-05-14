@@ -1,4 +1,3 @@
-
 # DeloitteSmart™ AI Assistant – Enhanced Version (Multi-Doc, Persistent Chat, Feedback, Camera Demo, Japanese Toggle Fix)
 
 import streamlit as st
@@ -23,7 +22,11 @@ st.set_page_config(
 # --- LANGUAGE TOGGLE ---
 if "language" not in st.session_state:
     st.session_state.language = "English"
-language = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
+language = st.sidebar.radio(
+    "🌐 Language / 言語",
+    ["English", "日本語"],
+    index=0
+)
 st.session_state.language = language
 
 def t(en_text, jp_text):
@@ -67,7 +70,7 @@ with col1:
 with col2:
     enable_camera = st.checkbox("📸 Enable Camera", value=False)
 
-# Make sure this st.title call is fully closed before the next if-block
+# Main title must be closed before camera logic
 st.title(
     t(
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
@@ -75,7 +78,7 @@ st.title(
     )
 )
 
-# Now we start a fresh if-block at the top level
+# Camera & OCR Demo
 if enable_camera:
     st.header("📸 Document Capture & OCR")
 
@@ -108,47 +111,13 @@ if enable_camera:
         st.subheader("📝 Extracted Text")
         st.text_area("", resp.choices[0].message.content, height=300)
 
-        "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
-        "DeloitteSmart™: よりスマートな意思決定のためのAIアシスタント"
-    )
-
-if enable_camera:
-    st.header("📸 Document Capture & OCR")
-    # Front vs. Rear camera tabs
-    tab_front, tab_rear = st.tabs(["Front Camera", "Rear Camera"])
-    with tab_front:
-        img_front = st.camera_input("Capture using front camera")
-    with tab_rear:
-        img_rear = st.file_uploader(
-            "Capture/upload rear-camera image",
-            type=["png", "jpg", "jpeg"]
-        )
-    img_file = img_front or img_rear
-
-      if img_file:
-    st.image(img_file, use_column_width=True)
-    img_bytes = (
-        img_file.getvalue()
-        if hasattr(img_file, "getvalue")
-        else img_file.read()
-    )
-
-    with st.spinner("Extracting text…"):
-        resp = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{
-                "role": "user",
-                "content": "Please extract all the text from this document image."
-            }],
-            files=[{"filename": "doc.jpg", "data": img_bytes}]
-        )
-
-    st.subheader("📝 Extracted Text")
-    st.text_area("", resp.choices[0].message.content, height=300)
-
 # --- FILE UPLOAD ---
 with st.expander(t("📁 Upload Documents (PDF, TXT)", "📁 ドキュメントをアップロード")):
-    uploaded_files = st.file_uploader(t("Upload Files", "ファイルをアップロード"), type=["pdf", "txt"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader(
+        t("Upload Files", "ファイルをアップロード"),
+        type=["pdf", "txt"],
+        accept_multiple_files=True
+    )
     if uploaded_files:
         for file in uploaded_files:
             filename = file.name
@@ -195,7 +164,10 @@ if st.session_state.selected_mode == "Client-Asks (Default)":
     with st.form("chat_input_form", clear_on_submit=True):
         col1, col2 = st.columns([9, 1])
         with col1:
-            user_input = st.text_input(t("Ask anything about the uploaded documents...", "アップロードされたドキュメントについて質問してください..."), key="user_input")
+            user_input = st.text_input(
+                t("Ask anything about the uploaded documents...", "アップロードされたドキュメントについて質問してください..."),
+                key="user_input"
+            )
         with col2:
             st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
             submitted = st.form_submit_button(t("Ask", "質問する"), use_container_width=True)

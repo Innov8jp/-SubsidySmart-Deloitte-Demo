@@ -1,4 +1,4 @@
-# DeloitteSmart™ AI Assistant – Final UAT-Passed Version with Chat-Centric "Download Exec Report"
+# DeloitteSmart™ AI Assistant – Final UAT-Passed Version with Chat-Centric “Download Exec Report”
 
 import streamlit as st
 import openai
@@ -48,16 +48,17 @@ no_count = sum(1 for f in st.session_state.get("feedback_entries", []) if not f.
 st.sidebar.metric(t("Helpful", "好評"), yes_count)
 st.sidebar.metric(t("Not Helpful", "不評"), no_count)
 
-# --- SESSION DEFAULTS ---
-for key, default in {
-    "chat_history": [],
-    "document_content": {},
-    "document_summary": {},
-    "uploaded_filenames": [],
-    "feedback_entries": []
-}.items():
-    if key not in st.session_state:
-        st.session_state[key] = default
+# --- SESSION STATE DEFAULTS ---
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "document_content" not in st.session_state:
+    st.session_state.document_content = {}
+if "document_summary" not in st.session_state:
+    st.session_state.document_summary = {}
+if "uploaded_filenames" not in st.session_state:
+    st.session_state.uploaded_filenames = []
+if "feedback_entries" not in st.session_state:
+    st.session_state.feedback_entries = []
 
 # --- MAIN LAYOUT ---
 col_main, _ = st.columns([3, 1])
@@ -69,7 +70,7 @@ with col_main:
         )
     )
 
-    # CAMERA OCR
+    # --- CAMERA OCR ---
     enable_cam = st.checkbox(t("📸 Enable Camera OCR", "📸 カメラOCRを有効にする"), key="cam_toggle")
     if enable_cam:
         st.subheader(t("Document Capture & OCR", "ドキュメント撮影 & OCR"))
@@ -82,39 +83,33 @@ with col_main:
         with tab_upload:
             img = st.file_uploader(
                 t("Upload image file", "画像ファイルをアップロード"),
-                type=["png","jpg","jpeg"]
+                type=["png", "jpg", "jpeg"]
             )
         if img:
             st.image(img, use_container_width=True)
             if st.button(t("Extract Text from Image", "画像からテキストを抽出")):
+                img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
                 try:
                     import pytesseract
-                    from PIL import Image as PILImage
-                    from io import BytesIO as _BytesIO
-                    img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
-                    img_pil = PILImage.open(_BytesIO(img_bytes))
-                    text = pytesseract.image_to_string(img_pil)
+                    from PIL import Image as PilImage
+                    pil_img = PilImage.open(BytesIO(img_bytes))
+                    text = pytesseract.image_to_string(pil_img)
                 except ModuleNotFoundError:
-                    st.error(t(
-                        "pytesseract not installed. Please run `pip install pytesseract`.",
-                        "pytesseractがインストールされていません。`pip install pytesseract`を実行してください。"
-                    ))
+                    st.error(t("pytesseract not installed. Run pip install pytesseract.", "pytesseractがインストールされていません。pip install pytesseractを実行してください。"))
                     text = ""
                 except Exception as e:
-                    st.error(t(
-                        f"OCR failed: {e}",
-                        f"OCRに失敗しました: {e}"
-                    ))
+                    st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
                     text = ""
-                # Store and display
                 st.session_state.document_content["Captured Image"] = text
                 st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
                 st.text_area("", text, height=300)
-# UPLOAD & SUMMARY
+
+    # --- FILE UPLOAD & SUMMARY ---
     with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約"), expanded=True):
         uploads = st.file_uploader(
             t("Select PDF/TXT files", "PDF/TXTを選択"),
-            type=["pdf", "txt"], accept_multiple_files=True
+            type=["pdf", "txt"],
+            accept_multiple_files=True
         )
         for f in uploads:
             if f.name not in st.session_state.uploaded_filenames:
@@ -122,23 +117,24 @@ with col_main:
                     content = ""
                     if f.type == "application/pdf":
                         doc = fitz.open(stream=f.read(), filetype="pdf")
-                        for p in doc: content += p.get_text()
+                        for p in doc:
+                            content += p.get_text()
                     else:
                         content = f.read().decode("utf-8")
                     st.session_state.document_content[f.name] = content
                     st.session_state.uploaded_filenames.append(f.name)
-                    sumr = openai.chat.completions.create(
+                    resp = openai.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
                             {"role":"system","content":"You are an expert AI consultant."},
                             {"role":"user","content":f"Summarize and ask 5 smart questions based on the document:\n{content}"}
                         ]
                     )
-                    st.session_state.document_summary[f.name] = sumr.choices[0].message.content
+                    st.session_state.document_summary[f.name] = resp.choices[0].message.content
                 except OpenAIError as e:
                     st.error(f"Error processing {f.name}: {e}")
 
-    # DISPLAY SUMMARIES
+    # --- DISPLAY SUMMARIES ---
     if st.session_state.document_summary:
         st.subheader(t("📄 Document Summaries & Questions", "📄 ドキュメント要約 & 質問"))
         for doc, summ in st.session_state.document_summary.items():
@@ -146,66 +142,61 @@ with col_main:
             st.markdown(summ)
             st.markdown("---")
 
-    # CHAT & Q&A
+    # --- CHAT & Q&A ---
     st.subheader(t("Chat & Ask Questions", "チャット & 質問"))
-    user_prompt = st.chat_input(t("Type your question...", "質問を入力..."))
-    if user_prompt:
+    user_input = st.chat_input(t("Type your question...", "質問を入力..."))
+    if user_input:
         docs = "\n\n".join(st.session_state.document_content.values())
         if not docs:
             st.warning(t("Please add or capture a document first.", "先にドキュメントを追加または撮影してください。"))
         else:
-            st.session_state.chat_history.append({"role":"user","content":user_prompt})
+            st.session_state.chat_history.append({"role": "user", "content": user_input})
             try:
                 resp = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role":"system","content":"You are a knowledgeable AI assistant."},
-                        {"role":"user","content":f"{docs}\n\nQuestion: {user_prompt}"}
+                        {"role": "system", "content": "You are a knowledgeable AI assistant."},
+                        {"role": "user", "content": f"{docs}\n\nQuestion: {user_input}"}
                     ]
                 )
-                ans = resp.choices[0].message.content
-                st.session_state.chat_history.append({"role":"assistant","content":ans})
+                answer = resp.choices[0].message.content
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
             except OpenAIError as e:
                 st.error(f"OpenAI API Error: {e}")
 
-    # DISPLAY CHAT HISTORY & FEEDBACK
-    for msg in st.session_state.chat_history:
+    # --- DISPLAY CHAT HISTORY & FEEDBACK ---
+    for idx, msg in enumerate(st.session_state.chat_history):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg["role"] == "assistant":
-                col1, col2 = st.columns([1,1])
-                if col1.button("👍", key=f"yes_{len(st.session_state.feedback_entries)}"):
-                    st.session_state.feedback_entries.append({"helpful":True,"timestamp":datetime.now().isoformat()})
+                c1, c2 = st.columns([1,1])
+                if c1.button("👍", key=f"yes_{idx}"):
+                    st.session_state.feedback_entries.append({"helpful": True, "timestamp": datetime.now().isoformat()})
                     st.success(t("Thanks for your feedback!", "フィードバックありがとうございます！"))
-                if col2.button("👎", key=f"no_{len(st.session_state.feedback_entries)}"):
-                    st.session_state.feedback_entries.append({"helpful":False,"timestamp":datetime.now().isoformat()})
+                if c2.button("👎", key=f"no_{idx}"):
+                    st.session_state.feedback_entries.append({"helpful": False, "timestamp": datetime.now().isoformat()})
                     st.info(t("Feedback noted.", "フィードバックを記録しました。"))
 
-        # Download Exec Report button below chat history
+    # --- DOWNLOAD EXEC REPORT BUTTON BELOW CHAT ---
     st.markdown("---")
-    if st.button("Download Exec Report"):
+    if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
         docs = st.session_state.document_content
-        combined = "
-
-".join([f"Document: {d}
-{c}" for d,c in docs.items()])
-        # Generate executive summary
+        combined = "\n\n".join([f"Document: {d}\n{c}" for d,c in docs.items()])
+        # Executive summary generation
         sumr = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role":"system","content":"You are a top-tier consultant AI."},
-                {"role":"user","content":f"Provide an executive summary:
-{combined}"}
+                {"role": "system", "content": "You are a top-tier consultant AI."},
+                {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
             ]
         )
         exec_sum = sumr.choices[0].message.content
-        # Generate smart questions
+        # Smart questions generation
         qst = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role":"system","content":"Generate 5 smart questions per document."},
-                {"role":"user","content":f"Documents:
-{combined}"}
+                {"role": "system", "content": "Generate 5 smart questions per document."},
+                {"role": "user", "content": f"Documents:\n{combined}"}
             ]
         )
         questions = qst.choices[0].message.content
@@ -215,21 +206,19 @@ with col_main:
         pdf.set_font("Arial","B",16)
         pdf.cell(0,10,"Exec Summary & Smart Questions",ln=1)
         pdf.set_font("Arial","",11)
-        # Executive Summary section
-        pdf.multi_cell(0,6,exec_sum)
+        for line in exec_sum.split("\n"):
+            pdf.multi_cell(0,6,line)
         pdf.ln(4)
-        # Smart Questions section
         pdf.set_font("Arial","B",12)
         pdf.cell(0,8,"Smart Questions",ln=1)
         pdf.set_font("Arial","",11)
-        for line in questions.split("
-"):
+        for line in questions.split("\n"):
             pdf.multi_cell(0,6,line)
         buf = BytesIO()
         pdf.output(buf)
         buf.seek(0)
         st.download_button(
-            "Download Exec Report",
+            t("Download Exec Report", "エグゼクティブレポートをダウンロード"),
             data=buf,
             file_name="Exec_Report.pdf",
             mime="application/pdf"

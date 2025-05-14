@@ -87,11 +87,11 @@ if enable_camera:
     img_file = img_front or img_rear
 
     if img_file:
-        st.image(img_file, use_column_width=True)
+        st.image(img_file, use_container_width=True)
         img_bytes = img_file.getvalue() if hasattr(img_file, "getvalue") else img_file.read()
 
         with st.spinner("Extracting text…"):
-            resp = openai.ChatCompletion.create(
+            resp = openai.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{
                     "role": "user",
@@ -161,7 +161,7 @@ with st.form("chat_input_form", clear_on_submit=True):
         )
     with col2:
         st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
-        submitted = st.form_submit_button(t("Ask", "質問する"), use_container_width=True)
+        submitted = st.form_submit_button(t("Ask", "質問する"))
 
 if submitted and user_input:
     all_text = "\n\n".join(st.session_state.document_content.values())
@@ -184,25 +184,6 @@ if submitted and user_input:
             st.session_state.chat_history.append({"role": "assistant", "content": answer})
             st.success("✅ Answer generated!")
             st.markdown(answer)
-
-            st.write("**Was this helpful?**")
-            col_yes, col_no = st.columns([1, 1])
-            with col_yes:
-                if st.button("👍 Yes", key=f"yes_{len(st.session_state.chat_history)}"):
-                    st.session_state.feedback_entries.append({
-                        "index": len(st.session_state.chat_history) - 1,
-                        "helpful": True,
-                        "timestamp": datetime.now().isoformat()
-                    })
-                    st.success("Thanks for your feedback!")
-            with col_no:
-                if st.button("👎 No", key=f"no_{len(st.session_state.chat_history)}"):
-                    st.session_state.feedback_entries.append({
-                        "index": len(st.session_state.chat_history) - 1,
-                        "helpful": False,
-                        "timestamp": datetime.now().isoformat()
-                    })
-                    st.info("Feedback recorded. We'll improve from here.")
         except OpenAIError as e:
             st.error(f"OpenAI Error: {str(e)}")
 

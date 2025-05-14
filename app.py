@@ -72,27 +72,32 @@ if enable_camera:
             "カメラデバイスを選択し、OCR用にフレームをキャプチャ。"
         )
     )
-    # Dropdown to select camera index (0=default front, 1=rear)
+    # Dropdown to select camera index (0=default, 1=rear)
     cam_index = st.selectbox(
         t("Camera Device", "カメラデバイス"),
         options=[0, 1],
         format_func=lambda i: t("Front Camera", "前面カメラ") if i == 0 else t("Rear Camera", "背面カメラ")
     )
+    # Media constraints specifying device by index
+    constraints = {
+        "video": {"deviceId": {"exact": str(cam_index)}},
+        "audio": False
+    }
     webrtc_ctx = webrtc_streamer(
         key="webrtc-camera",
         mode=WebRtcMode.SENDRECV,
-        video_device_index=cam_index,
-        media_stream_constraints={"video": True, "audio": False},
+        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        media_stream_constraints=constraints,
+        async_processing=False
     )
-    # Capture frame
     if webrtc_ctx.video_receiver:
         frame = webrtc_ctx.video_receiver.get_frame()
         img = frame.to_image()
         st.image(img, use_container_width=True)
         if st.button(t("Capture Frame for OCR", "OCR用フレームをキャプチャ")):
-            buffer = BytesIO()
-            img.save(buffer, format="JPEG")
-            img_bytes = buffer.getvalue()
+            buf = BytesIO()
+            img.save(buf, format="JPEG")
+            img_bytes = buf.getvalue()
             with st.spinner(t("Extracting text…", "テキスト抽出中…")):
                 ocr_resp = openai.chat.completions.create(
                     model="gpt-4o-mini",
@@ -100,7 +105,6 @@ if enable_camera:
                     files=[{"filename": "capture.jpg", "data": img_bytes}]
                 )
             ocr_text = ocr_resp.choices[0].message.content
-            # Save as a document
             st.session_state.document_content["Captured Image"] = ocr_text
             st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
             st.text_area("", ocr_text, height=300)
@@ -125,7 +129,6 @@ with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメント
                     content = f.read().decode("utf-8")
                 st.session_state.document_content[name] = content
                 st.session_state.uploaded_filenames.append(name)
-                # Summarize
                 sum_resp = openai.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[

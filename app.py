@@ -50,7 +50,6 @@ def init_session():
         "document_content": {},
         "document_summary": {},
         "uploaded_filenames": [],
-        "selected_mode": "Client-Asks (Default)",
         "feedback_entries": []
     }
     for key, val in defaults.items():
@@ -58,19 +57,10 @@ def init_session():
             st.session_state[key] = val
 init_session()
 
-# --- MODE & CAMERA ---
-st.markdown("### Mode Selection and Camera Toggle")
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.session_state.selected_mode = st.radio(
-        "Choose interaction mode:",
-        ["Client-Asks (Default)", "Deloitte-Asks"],
-        index=0
-    )
-with col2:
-    enable_camera = st.checkbox("📸 Enable Camera", value=False)
+# --- CAMERA TOGGLE ---
+enable_camera = st.sidebar.checkbox("📸 Enable Camera Capture", value=False)
 
-# Main title must be closed before camera logic
+# Main title
 st.title(
     t(
         "DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions",
@@ -81,14 +71,16 @@ st.title(
 # Camera & OCR Demo
 if enable_camera:
     st.header("📸 Document Capture & OCR")
+    st.markdown(
+        "_On mobile, the 'Rear Camera' tab allows direct capture; on desktop, upload an image taken by your rear camera._"
+    )
 
-    # Front vs. Rear camera tabs
     tab_front, tab_rear = st.tabs(["Front Camera", "Rear Camera"])
     with tab_front:
         img_front = st.camera_input("Capture using front camera")
     with tab_rear:
         img_rear = st.file_uploader(
-            "Capture/upload rear-camera image",
+            "Capture/upload image (rear camera)",
             type=["png", "jpg", "jpeg"]
         )
 
@@ -158,63 +150,61 @@ if st.session_state.document_summary:
         st.markdown(summary)
         st.markdown("---")
 
-# --- CLIENT-ASKS MODE ---
-if st.session_state.selected_mode == "Client-Asks (Default)":
-    st.subheader(t("Ask Your Question", "質問してください"))
-    with st.form("chat_input_form", clear_on_submit=True):
-        col1, col2 = st.columns([9, 1])
-        with col1:
-            user_input = st.text_input(
-                t("Ask anything about the uploaded documents...", "アップロードされたドキュメントについて質問してください..."),
-                key="user_input"
+# --- CHAT INPUT ---
+st.subheader(t("Ask Your Question", "質問してください"))
+with st.form("chat_input_form", clear_on_submit=True):
+    col1, col2 = st.columns([9, 1])
+    with col1:
+        user_input = st.text_input(
+            t("Ask anything about the uploaded documents...", "アップロードされたドキュメントについて質問してください..."),
+            key="user_input"
+        )
+    with col2:
+        st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
+        submitted = st.form_submit_button(t("Ask", "質問する"), use_container_width=True)
+
+if submitted and user_input:
+    all_text = "\n\n".join(st.session_state.document_content.values())
+    if not all_text.strip():
+        st.warning("Please upload documents before asking questions.")
+    elif not openai_api_key:
+        st.warning("OpenAI API key is not configured.")
+    else:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        try:
+            prompt = f"You are an AI agent. Answer the question using the following documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a document-savvy AI assistant."},
+                    {"role": "user", "content": prompt}
+                ]
             )
-        with col2:
-            st.markdown("<div>&nbsp;</div>", unsafe_allow_html=True)
-            submitted = st.form_submit_button(t("Ask", "質問する"), use_container_width=True)
+            answer = response.choices[0].message.content
+            st.session_state.chat_history.append({"role": "assistant", "content": answer})
+            st.success("✅ Answer generated!")
+            st.markdown(answer)
 
-    if submitted and user_input:
-        all_text = "\n\n".join(st.session_state.document_content.values())
-        if not all_text.strip():
-            st.warning("Please upload documents before asking questions.")
-        elif not openai_api_key:
-            st.warning("OpenAI API key is not configured.")
-        else:
-            st.session_state.chat_history.append({"role": "user", "content": user_input})
-            try:
-                prompt = f"You are an AI agent. Answer the question using the following documents.\n\nDocuments:\n{all_text}\n\nQuestion: {user_input}"
-                response = openai.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a document-savvy AI assistant."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                answer = response.choices[0].message.content
-                st.session_state.chat_history.append({"role": "assistant", "content": answer})
-                st.success("✅ Answer generated!")
-                st.markdown(answer)
-
-                # --- WAS THIS HELPFUL ---
-                st.write("**Was this helpful?**")
-                col_yes, col_no = st.columns([1, 1])
-                with col_yes:
-                    if st.button("👍 Yes", key=f"yes_{len(st.session_state.chat_history)}"):
-                        st.session_state.feedback_entries.append({
-                            "index": len(st.session_state.chat_history) - 1,
-                            "helpful": True,
-                            "timestamp": datetime.now().isoformat()
-                        })
-                        st.success("Thanks for your feedback!")
-                with col_no:
-                    if st.button("👎 No", key=f"no_{len(st.session_state.chat_history)}"):
-                        st.session_state.feedback_entries.append({
-                            "index": len(st.session_state.chat_history) - 1,
-                            "helpful": False,
-                            "timestamp": datetime.now().isoformat()
-                        })
-                        st.info("Feedback recorded. We'll improve from here.")
-            except OpenAIError as e:
-                st.error(f"OpenAI Error: {str(e)}")
+            st.write("**Was this helpful?**")
+            col_yes, col_no = st.columns([1, 1])
+            with col_yes:
+                if st.button("👍 Yes", key=f"yes_{len(st.session_state.chat_history)}"):
+                    st.session_state.feedback_entries.append({
+                        "index": len(st.session_state.chat_history) - 1,
+                        "helpful": True,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    st.success("Thanks for your feedback!")
+            with col_no:
+                if st.button("👎 No", key=f"no_{len(st.session_state.chat_history)}"):
+                    st.session_state.feedback_entries.append({
+                        "index": len(st.session_state.chat_history) - 1,
+                        "helpful": False,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    st.info("Feedback recorded. We'll improve from here.")
+        except OpenAIError as e:
+            st.error(f"OpenAI Error: {str(e)}")
 
 # --- CHAT HISTORY ---
 if st.session_state.chat_history:

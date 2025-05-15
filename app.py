@@ -166,8 +166,7 @@ with col_main:
         docs = st.session_state.document_content
         combined = "
 
-".join([f"Document: {name}
-{content}" for name, content in docs.items()])
+combined = "\n\n".join([f"Document: {name}\n{content}" for name, content in docs.items()])
         # Generate executive summary
         summary_resp = openai.chat.completions.create(
             model="gpt-4o-mini",

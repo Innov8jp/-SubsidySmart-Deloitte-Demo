@@ -61,7 +61,7 @@ for key, val in defaults.items():
 col_main, _ = st.columns([3,1])
 with col_main:
     st.title(t(
-        "DeloitteSmart™: AI Assistant for M&A & Document Insights",
+        "DeloitteSmart™: AI Assistant for Smarter Services",
         "DeloitteSmart™: M&Aとドキュメント解析のためのAIアシスタント"
     ))
 
@@ -167,7 +167,7 @@ with col_main:
         combined = "\n\n".join([f"Document: {name}\n{content}" for name, content in docs.items()])
         # Generate executive summary
         summary_resp = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a top-tier consultant AI."},
                 {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
@@ -176,7 +176,7 @@ with col_main:
         exec_sum = summary_resp.choices[0].message.content
         # Generate smart questions
         questions_resp = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Generate 5 smart questions per document."},
                 {"role": "user", "content": f"Documents:\n{combined}"}

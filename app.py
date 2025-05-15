@@ -159,77 +159,49 @@ with col_main:
                 if c2.button("👎",key=f"no{idx}"):
                     st.session_state.feedback_entries.append({"helpful":False,"timestamp":datetime.now().isoformat()})
 
-        # Download Exec Report button after chat
+                # Download Exec Report button after chat
     st.markdown("---")
-    if st.button(t("Download Exec Report","エグゼクティブレポートをダウンロード")):
+    if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
+        # Combine all document content
         docs = st.session_state.document_content
         combined = "
 
 ".join([f"Document: {d}
-{c}" for d,c in docs.items()])
+{c}" for d, c in docs.items()])
         # Generate executive summary
-        sumr = openai.chat.completions.create(
+        exec_sum = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role":"system","content":"You are a top-tier consultant AI."},
-                {"role":"user","content":f"Provide an executive summary:
+                {"role": "system", "content": "You are a top-tier consultant AI."},
+                {"role": "user", "content": f"Provide an executive summary:
 {combined}"}
             ]
         ).choices[0].message.content
         # Generate smart questions
-        qst = openai.chat.completions.create(
+        questions = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role":"system","content":"Generate 5 smart questions per document."},
-                {"role":"user","content":f"Documents:
+                {"role": "system", "content": "Generate 5 smart questions per document."},
+                {"role": "user", "content": f"Documents:
 {combined}"}
             ]
         ).choices[0].message.content
-        # Build PDF report with safe cell wrapping
-        from fpdf import FPDF, FPDFException
-        import textwrap
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial","B",16)
-        pdf.cell(0,10,"Exec Summary & Smart Questions",ln=1)
-        # Executive Summary
-        pdf.set_font("Arial","B",12)
-        pdf.cell(0,8,"Executive Summary",ln=1)
-        pdf.set_font("Arial","",11)
-        for para in sumr.split("
-"):
-            lines = textwrap.wrap(para, width=90)
-            for line in lines:
-                try:
-                    pdf.multi_cell(0,6,line)
-                except FPDFException:
-                    # fallback split into smaller chunks
-                    sub_lines = textwrap.wrap(line, width=45)
-                    for sub in sub_lines:
-                        pdf.multi_cell(0,6,sub)
-        pdf.ln(4)
-        # Smart Questions
-        pdf.set_font("Arial","B",12)
-        pdf.cell(0,8,"Smart Questions",ln=1)
-        pdf.set_font("Arial","",11)
-        for para in qst.split("
-"):
-            lines = textwrap.wrap(para, width=90)
-            for line in lines:
-                try:
-                    pdf.multi_cell(0,6,line)
-                except FPDFException:
-                    sub_lines = textwrap.wrap(line, width=45)
-                    for sub in sub_lines:
-                        pdf.multi_cell(0,6,sub)
-        # Output PDF
-        buf = BytesIO()
-        pdf.output(buf)
-        buf.seek(0)
+        # Build plain text report
+        report_txt = "# Exec Summary & Smart Questions
+
+"
+        report_txt += "## Executive Summary
+" + exec_sum + "
+
+"
+        report_txt += "## Smart Questions
+" + questions + "
+"
+        # Download as .txt
         st.download_button(
-            t("Download Exec Report","エグゼクティブレポートをダウンロード"),
-            data=buf,
-            file_name="Exec_Report.pdf",
-            mime="application/pdf"
+            t("Download Exec Report", "エグゼクティブレポートをダウンロード"),
+            data=report_txt,
+            file_name="Exec_Report.txt",
+            mime="text/plain"
         )
 # --- END ---

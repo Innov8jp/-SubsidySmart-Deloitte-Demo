@@ -179,8 +179,7 @@ with col_main:
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Generate 5 smart questions per document."},
-                {"role": "user", "content": f"Documents:
-{combined}"}
+                {"role": "user", "content": f"Documents:\n{combined}"}
             ]
         )
         questions = questions_resp.choices[0].message.content

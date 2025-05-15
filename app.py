@@ -159,7 +159,7 @@ with col_main:
                 if c2.button("👎",key=f"no{idx}"):
                     st.session_state.feedback_entries.append({"helpful":False,"timestamp":datetime.now().isoformat()})
 
-                # Download Exec Report button after chat
+                    # Download Exec Report button after chat
     st.markdown("---")
     if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
         # Combine all document content

@@ -159,33 +159,35 @@ with col_main:
                 if c2.button("👎",key=f"no{idx}"):
                     st.session_state.feedback_entries.append({"helpful":False,"timestamp":datetime.now().isoformat()})
 
-                    # Download Exec Report button after chat
+                            # Download Exec Report button after chat
     st.markdown("---")
     if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
-        # Combine all document content
+        # Combine all document content properly
         docs = st.session_state.document_content
         combined = "
 
-".join([f"Document: {d}
-{c}" for d, c in docs.items()])
+".join([f"Document: {name}
+{content}" for name, content in docs.items()]))
         # Generate executive summary
-        exec_sum = openai.chat.completions.create(
+        summary_resp = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a top-tier consultant AI."},
                 {"role": "user", "content": f"Provide an executive summary:
 {combined}"}
             ]
-        ).choices[0].message.content
+        )
+        exec_sum = summary_resp.choices[0].message.content
         # Generate smart questions
-        questions = openai.chat.completions.create(
+        questions_resp = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Generate 5 smart questions per document."},
                 {"role": "user", "content": f"Documents:
 {combined}"}
             ]
-        ).choices[0].message.content
+        )
+        questions = questions_resp.choices[0].message.content
         # Build plain text report
         report_txt = "# Exec Summary & Smart Questions
 

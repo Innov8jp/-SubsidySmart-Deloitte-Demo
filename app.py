@@ -170,8 +170,7 @@ with col_main:
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a top-tier consultant AI."},
-                {"role": "user", "content": f"Provide an executive summary:
-{combined}"}
+               {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
             ]
         )
         exec_sum = summary_resp.choices[0].message.content

@@ -164,9 +164,7 @@ with col_main:
     if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
         # Combine all document content properly
         docs = st.session_state.document_content
-        combined = "
-
-combined = "\n\n".join([f"Document: {name}\n{content}" for name, content in docs.items()])
+        combined = "\n\n".join([f"Document: {name}\n{content}" for name, content in docs.items()])
         # Generate executive summary
         summary_resp = openai.chat.completions.create(
             model="gpt-4o-mini",

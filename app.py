@@ -73,7 +73,7 @@ with col_main:
         with tab1:
             img = st.camera_input(t("Capture via camera","カメラで撮影"))
         with tab2:
-            img = st.file_uploader(t("Upload image file","画像ファイルをアップロード"), type=["png","jpg","jpeg"]) 
+            img = st.file_uploader(t("Upload image file","画像ファイルをアップロード"), type=["png","jpg","jpeg"])
         if img:
             st.image(img, use_container_width=True)
             if st.button(t("Extract Text from Image","画像からテキストを抽出")):
@@ -85,7 +85,7 @@ with col_main:
                     text = pytesseract.image_to_string(pil)
                 except ModuleNotFoundError:
                     st.error(t("pytesseract not installed. Run pip install pytesseract.",
-                               "pytesseractがインストールされていません。pip install pytesseractを実行してください。"))
+                                    "pytesseractがインストールされていません。pip install pytesseractを実行してください。"))
                     text = ""
                 except Exception as e:
                     st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
@@ -159,7 +159,7 @@ with col_main:
                 if c2.button("👎",key=f"no{idx}"):
                     st.session_state.feedback_entries.append({"helpful":False,"timestamp":datetime.now().isoformat()})
 
-                                # Download Exec Report button after chat
+                    # Download Exec Report button after chat
     st.markdown("---")
     if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
         # Combine all document content properly
@@ -170,7 +170,7 @@ with col_main:
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a top-tier consultant AI."},
-               {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
+                {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
             ]
         )
         exec_sum = summary_resp.choices[0].message.content
@@ -184,16 +184,11 @@ with col_main:
         )
         questions = questions_resp.choices[0].message.content
         # Build plain text report
-        report_txt = "# Exec Summary & Smart Questions
+        report_txt = """# Exec Summary & Smart Questions
 
-"
-        report_txt += "## Executive Summary
-" + exec_sum + "
-
-"
-        report_txt += "## Smart Questions
-" + questions + "
-"
+"""
+        report_txt += "## Executive Summary\n" + exec_sum + "\n\n"
+        report_txt += "## Smart Questions\n" + questions + "\n"
         # Download as .txt
         st.download_button(
             t("Download Exec Report", "エグゼクティブレポートをダウンロード"),

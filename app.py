@@ -80,7 +80,7 @@ with col_main:
                 img_bytes = img.getvalue() if hasattr(img, "getvalue") else img.read()
                 try:
                     import pytesseract
-                    pytesseract.pytesseract.tesseract_cmd = r"C:\\Users\\asifb\\OneDrive\\ドキュメント\\tesseract.exe"
+                    pytesseract.pytesseract.tesseract_cmd = r"C:\\Users\\asifb\\OneDrive\\documents\\tesseract.exe"
                     from PIL import Image as PilImage
 
                     pil = PilImage.open(BytesIO(img_bytes))

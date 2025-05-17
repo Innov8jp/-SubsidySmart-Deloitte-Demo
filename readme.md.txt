@@ -45,13 +45,23 @@ DeloitteSmartApp/
    pip install -r requirements.txt
    ```
 
+   **Included packages:**
+
+   * streamlit >= 1.21.0
+   * openai >= 1.0.0
+   * PyMuPDF
+   * pytesseract
+   * pillow
+   * fpdf2
+   * streamlit-webrtc
+
 3. **Ensure Tesseract OCR is installed** on your system.
 
    * [Install Tesseract](https://github.com/tesseract-ocr/tesseract/wiki)
    * Update the path in `ocr_utils.py` if needed:
 
      ```python
-     pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
      ```
 
 ---

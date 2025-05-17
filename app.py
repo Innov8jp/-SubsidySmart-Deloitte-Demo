@@ -34,11 +34,17 @@ st.title(t("DeloitteSmart™: AI Assistant for Smarter Services", "DeloitteSmart
 # --- OCR CAPTURE ---
 with st.expander(t("📸 OCR - Camera or Upload", "📸 OCR カメラまたはアップロード")):
     img = st.camera_input(t("Capture Image", "写真を撮影")) or st.file_uploader(t("Or upload image", "または画像をアップロード"), type=["png", "jpg", "jpeg"])
+
+    if img:
+        st.image(img, caption="Preview", use_column_width=True)
+
     if img and st.button(t("Extract Text", "文字を抽出")):
         text = extract_text_from_image(img)
-        if text:
+        if text and not text.startswith("[OCR failed"):
             st.session_state.document_content["Captured Image"] = text
             st.text_area(t("Extracted Text", "抽出されたテキスト"), text, height=300)
+        else:
+            st.error(t("Text extraction failed. Please try a clearer image.", "文字抽出に失敗しました。より鮮明な画像で再試行してください。"))
 
 # --- DOCUMENT UPLOAD ---
 with st.expander(t("📁 Upload Documents", "📁 ドキュメントをアップロード"), expanded=True):

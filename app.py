@@ -106,3 +106,4 @@ if st.button(t("Download Exec Report", "エグゼクティブレポートをダ�
             file_name="Exec_Report.txt",
             mime="text/plain"
         )
+# --- END ---

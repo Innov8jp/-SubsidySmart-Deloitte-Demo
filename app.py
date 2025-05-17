@@ -1,10 +1,15 @@
+# --- main.py ---
+from app.ocr_utils import extract_text_from_image
+from app.gpt_utils import summarize_document, generate_exec_report
+from app.ui_utils import t, init_session
 
 import streamlit as st
-import openai
+import fitz  # PyMuPDF
+from PIL import Image as PilImage
+from io import BytesIO
 from datetime import datetime
-from openai import OpenAIError
 
-# --- CONFIG ---
+# --- CONFIGURATION ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
     page_icon=":moneybag:",
@@ -12,208 +17,99 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.image("deloitte_logo.png", width=200)
-    openai_api_key = st.secrets["OPENAI_API_KEY"]
-    st.markdown("✅ OpenAI API key is pre-configured.")
-    st.markdown("Powered by [Innov8]")
-    st.markdown("Prototype Version 1.0")
-    st.markdown("Secure | Scalable | Smart")
+# --- API KEY ---
+openai_api_key = st.secrets.get("OPENAI_API_KEY")
+if not openai_api_key:
+    st.sidebar.error("❌ OpenAI API key not found. Configure in Streamlit secrets.")
+    st.stop()
 
-# --- SESSION STATE SETUP ---
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+# --- LANGUAGE & SESSION ---
+lang = st.sidebar.radio("🌐 Language / 言語", ["English", "日本語"], index=0)
+st.session_state.language = lang
+init_session()
 
-if "user_question" not in st.session_state:
-    st.session_state.user_question = ""
+# --- TITLE ---
+st.title(t("DeloitteSmart™: AI Assistant for Smarter Services", "DeloitteSmart™: M&Aとドキュメント解析のためのAIアシスタント"))
 
-# --- MAIN PAGE ---
-st.title("DeloitteSmart™: Your AI Assistant for Faster, Smarter Decisions")
-st.caption("より速く、よりスマートな意思決定のためのAIアシスタント")
-st.caption("Ask any business subsidy question and get instant expert advice, powered by Deloitte AI Agent.")
+# --- OCR CAPTURE ---
+with st.expander(t("📸 OCR - Camera or Upload", "📸 OCR カメラまたはアップロード")):
+    img = st.camera_input(t("Capture Image", "写真を撮影")) or st.file_uploader(t("Or upload image", "または画像をアップロード"), type=["png", "jpg", "jpeg"])
 
-mode = st.radio("Choose interaction mode:", ["Client-Asks (Default)", "Deloitte-Asks"], index=0)
-col1, col2 = st.columns([3, 1])
+    if img:
+        st.image(img, caption="Preview", use_column_width=True)
 
-# --- LEFT COLUMN ---
-with col1:
-    if mode == "Client-Asks (Default)":
-        st.subheader("Ask Your Question")
-        st.text_input("Type your subsidy-related question here:", key="user_question")
+    if img and st.button(t("Extract Text", "文字を抽出")):
+        text = extract_text_from_image(img)
+        if text and not text.startswith("[OCR failed"):
+            st.session_state.document_content["Captured Image"] = text
+            st.text_area(t("Extracted Text", "抽出されたテキスト"), text, height=300)
+        else:
+            st.error(t("Text extraction failed. Please try a clearer image.", "文字抽出に失敗しました。より鮮明な画像で再試行してください。"))
 
-        if st.button("Ask Deloitte AI Agent™"):
-            user_question = st.session_state.user_question.strip()
+# --- DOCUMENT UPLOAD ---
+with st.expander(t("📁 Upload Documents", "📁 ドキュメントをアップロード"), expanded=True):
+    files = st.file_uploader(t("Select PDF/TXT files", "PDF/TXTファイルを選択"), type=["pdf", "txt"], accept_multiple_files=True)
+    for f in files:
+        if f.name not in st.session_state.uploaded_filenames:
+            try:
+                content = fitz.open(stream=f.read(), filetype="pdf") if f.type == "application/pdf" else f.read().decode("utf-8")
+                content_text = "".join([page.get_text() for page in content]) if f.type == "application/pdf" else content
+                st.session_state.document_content[f.name] = content_text
+                st.session_state.uploaded_filenames.append(f.name)
+                summarize_document(f.name, content_text)
+            except Exception as e:
+                st.error(f"Error processing {f.name}: {e}")
 
-            if not openai_api_key:
-                st.error("API key missing.")
-            elif not user_question:
-                st.warning("Please enter a question.")
-            else:
-                openai.api_key = openai_api_key
-                prompt = f"""
-You are a highly experienced Deloitte consultant specializing in Japanese government subsidies. Use a structured thought process:
+# --- DOCUMENT SUMMARY ---
+if st.session_state.document_summary:
+    st.subheader(t("📄 Summaries", "📄 要約"))
+    for doc, summary in st.session_state.document_summary.items():
+        with st.expander(f"🗂️ {doc}"):
+            st.markdown(summary)
 
-1. Identify relevant subsidy programs (3 listed).
-2. Analyze user eligibility based on the question.
-3. Provide a concise, professional answer. If needed, request missing info.
+# --- CHAT ---
+st.subheader(t("💬 Ask Questions", "質問"))
+prompt = st.chat_input(t("Type your question...", "質問を入力..."))
+if prompt:
+    docs = "\n\n".join(st.session_state.document_content.values())
+    if not docs:
+        st.warning(t("Please add or capture a document first.", "先に文書を追加または撮影してください"))
+    else:
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        from openai import OpenAIError
+        import openai
+        openai.api_key = openai_api_key
+        try:
+            ans = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a knowledgeable AI assistant."},
+                    {"role": "user", "content": f"{docs}\n\nQuestion: {prompt}"}
+                ]
+            ).choices[0].message.content
+            st.session_state.chat_history.append({"role": "assistant", "content": ans})
+        except OpenAIError as e:
+            st.error(f"OpenAI API Error: {e}")
 
-User Question: {user_question}
-"""
-                with st.spinner("Analyzing with DeloitteSmart™..."):
-                    try:
-                        response = openai.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are a highly experienced Deloitte consultant specializing in Japanese government subsidies."},
-                                {"role": "user", "content": prompt}
-                            ]
-                        )
-                        reply = response.choices[0].message.content
-                        st.session_state.chat_history.append({
-                            "question": user_question,
-                            "answer": reply,
-                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        })
-                        st.success("✅ Answer generated below!")
-                        st.markdown(reply)
+for idx, msg in enumerate(st.session_state.chat_history):
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+        if msg["role"] == "assistant":
+            c1, c2 = st.columns([1, 1])
+            if c1.button("👍", key=f"yes{idx}"):
+                st.session_state.feedback_entries.append({"helpful": True, "timestamp": datetime.now().isoformat()})
+            if c2.button("👎", key=f"no{idx}"):
+                st.session_state.feedback_entries.append({"helpful": False, "timestamp": datetime.now().isoformat()})
 
-                        # ✅ Safely clear input and rerun
-                        if "user_question" in st.session_state:
-                            del st.session_state["user_question"]
-                            st.experimental_rerun()
-
-                    except OpenAIError as e:
-                        st.error(f"OpenAI API Error: {str(e)}")
-
-    elif mode == "Deloitte-Asks":
-        st.subheader("Get Smart Questions to Ask Your Client")
-        client_profile = st.text_area("Describe the client (industry, size, goal, etc.):", key="client_profile")
-        uploaded_file = st.file_uploader("Upload Client Business Overview (Optional - .txt file)", type=["txt"], key="uploaded_file")
-
-        document_content = None
-        if uploaded_file:
-            document_content = uploaded_file.read().decode("utf-8")
-            st.markdown(f"📄 **Uploaded file:** {uploaded_file.name}")
-
-        if st.button("Get AI Insights & Questions", key="insights_btn"):
-            if not openai_api_key:
-                st.error("API key missing.")
-            elif not client_profile.strip():
-                st.warning("Please describe the client first.")
-            else:
-                openai.api_key = openai_api_key
-                prompt = f"""
-You are SubsidySmart™, a highly intelligent Deloitte AI assistant. Your goal is to provide expert-level analysis of client profiles and documents to determine eligibility for Japanese government subsidies. Follow a structured reasoning process:
-
-1. **Analyze Client Profile:** Identify key characteristics of the client (industry, size, goals, etc.).
-2. **Analyze Client Document (if provided):** Extract key information related to their business activities, R&D, expansion plans, etc.
-3. **Based on the analysis, consider the following Japanese subsidy programs and their core requirements:**
-   - **SME Business Expansion Grant 2025:** Supports SMEs (5-100 employees, <$50M revenue) for new market expansion.
-   - **Technology Innovation Support Program 2025:** Funds R&D in AI, IoT, biotech, green energy (3+ years operational history).
-   - **Export Development Assistance 2025:** Supports export expansion (>$500K domestic sales).
-4. **Recommend 1-2 most relevant subsidy programs.** For each recommendation, briefly explain *why* the client might be eligible based on the analyzed information.
-5. **Formulate 2-3 insightful follow-up questions** a Deloitte consultant should ask the client to gather more specific details and confirm eligibility.
-
-Present your output in a clear, structured format:
-
-**AI Subsidy Assessment:**
-
-**Recommended Programs:**
-- [Program Name 1]: [Brief justification based on client info]
-- [Program Name 2]: [Brief justification based on client info]
-
-**Follow-Up Questions:**
-- [Question 1]
-- [Question 2]
-- [Question 3]
-
-**Client Profile:**
-{client_profile}
-
-**Client Document:**
-{'[START DOCUMENT]' + document_content + '[END DOCUMENT]' if document_content else 'No document provided.'}
-"""
-                with st.spinner("Getting AI Insights & Questions..."):
-                    try:
-                        response = openai.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are an expert Deloitte subsidy consultant providing detailed eligibility assessments."},
-                                {"role": "user", "content": prompt}
-                            ]
-                        )
-                        ai_response = response.choices[0].message.content
-                        st.markdown("### AI Insights & Recommendations")
-                        st.markdown(ai_response)
-                        st.session_state["initial_ai_response"] = ai_response
-
-                    except OpenAIError as e:
-                        st.error(f"OpenAI Error: {str(e)}")
-
-        if uploaded_file:
-            st.subheader("Ask Questions About the Document")
-            followup_question = st.text_input("Type your question about the uploaded document here:", key="followup_question")
-            if st.button("Ask AI About Document", key="followup_btn"):
-                if followup_question:
-                    question_prompt = f"""
-You are an AI assistant. Based ONLY on the following:
-
-Client Profile:
-{client_profile}
-
-Client Document:
-{document_content}
-
-Answer this question:
-{followup_question}
-"""
-                    with st.spinner("Getting answer..."):
-                        try:
-                            response = openai.chat.completions.create(
-                                model="gpt-3.5-turbo",
-                                messages=[
-                                    {"role": "system", "content": "You are an AI assistant answering based on documents."},
-                                    {"role": "user", "content": question_prompt}
-                                ]
-                            )
-                            answer = response.choices[0].message.content
-                            st.markdown(f"**Question:** {followup_question}")
-                            st.markdown(f"**Answer:** {answer}")
-                        except OpenAIError as e:
-                            st.error(f"OpenAI Error: {str(e)}")
-                else:
-                    st.warning("Please enter a question.")
-
-    # --- Optional: Reset Chat Button ---
-    if st.session_state.chat_history:
-        if st.button("🔁 Reset Chat"):
-            st.session_state.chat_history = []
-            st.success("Chat history cleared.")
-            st.experimental_rerun()
-
-    # --- Display Chat History ---
-    if st.session_state.chat_history:
-        st.markdown("---")
-        st.subheader("Conversation History")
-        for chat in reversed(st.session_state.chat_history):
-            with st.container():
-                st.markdown(f"**🧑 You ({chat['timestamp']}):** {chat['question']}")
-                st.markdown(f"**🤖 DeloitteSmart™:** {chat['answer']}")
-                st.markdown("---")
-
-# --- RIGHT COLUMN ---
-with col2:
-    st.subheader("ℹ️ Assistant Overview")
-    st.markdown("""
-✅ Real-time subsidy advice  
-✅ Smart scoring system  
-✅ Ready for CRM + Drafting  
-""")
-    st.subheader("📈 Deloitte Roadmap")
-    st.markdown("""
-- Phase 1: Internal AI Assistant  
-- Phase 2: Client Portal  
-- Phase 3: CRM  
-- Phase 4: Analytics Dashboard  
-""")
+# --- EXEC REPORT DOWNLOAD ---
+st.markdown("---")
+if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
+    report_txt = generate_exec_report()
+    if report_txt:
+        st.download_button(
+            t("Download Report", "レポートをダウンロード"),
+            data=report_txt,
+            file_name="Exec_Report.txt",
+            mime="text/plain"
+        )
+# --- END ---

@@ -83,8 +83,9 @@ with col_main:
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 from PIL import Image as PilImage
 
-                    pil = PilImage.open(BytesIO(img_bytes))
-                    text = pytesseract.image_to_string(pil)
+pil = PilImage.open(BytesIO(img_bytes))
+text = pytesseract.image_to_string(pil)
+
                 except ModuleNotFoundError:
                     st.error(t("pytesseract not installed. Run pip install pytesseract.",
                                     "pytesseractがインストールされていません。pip install pytesseractを実行してください。"))

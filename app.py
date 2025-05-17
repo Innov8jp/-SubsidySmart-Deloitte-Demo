@@ -80,7 +80,9 @@ with col_main:
                 img_bytes = img.getvalue() if hasattr(img,"getvalue") else img.read()
                 try:
                     import pytesseract
-                    from PIL import Image as PilImage
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+from PIL import Image as PilImage
+
                     pil = PilImage.open(BytesIO(img_bytes))
                     text = pytesseract.image_to_string(pil)
                 except ModuleNotFoundError:

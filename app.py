@@ -95,3 +95,5 @@ with col_main:
                 st.session_state.document_content["Captured Image"] = text
                 st.subheader(t("📝 Extracted Text", "📝 抽出テキスト"))
                 st.text_area("", text, height=300)
+
+    # --- CONTINUE REMAINING FUNCTIONALITY HERE ---

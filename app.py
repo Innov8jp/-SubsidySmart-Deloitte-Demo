@@ -101,5 +101,101 @@ with col_main:
                 except Exception as e:
                     st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
 
-# The rest of the script remains unchanged.
-# Ensure any downstream usage of st.session_state.document_content includes both "Camera Image" and "Uploaded Image" keys as needed.
+    # File upload & summary
+    with st.expander(t("📁 Upload & Summarize Documents", "📁 ドキュメントアップロード & 要約"), expanded=True):
+        files = st.file_uploader(t("Select PDF/TXT files", "PDF/TXTを選択"), type=["pdf", "txt"], accept_multiple_files=True)
+        for f in files:
+            if f.name not in st.session_state.uploaded_filenames:
+                content = ""
+                try:
+                    if f.type == "application/pdf":
+                        doc = fitz.open(stream=f.read(), filetype="pdf")
+                        content = "".join([page.get_text() for page in doc])
+                    else:
+                        content = f.read().decode("utf-8")
+                    st.session_state.document_content[f.name] = content
+                    st.session_state.uploaded_filenames.append(f.name)
+                    resp = openai.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are an expert AI consultant."},
+                            {"role": "user", "content": f"Summarize and ask 5 smart questions based on the document:\n{content}"}
+                        ]
+                    )
+                    st.session_state.document_summary[f.name] = resp.choices[0].message.content
+                except OpenAIError as e:
+                    st.error(f"Error processing {f.name}: {e}")
+
+    # Display summaries
+    if st.session_state.document_summary:
+        st.subheader(t("📄 Document Summaries & Questions", "📄 ドキュメント要約 & 質問"))
+        for doc, summ in st.session_state.document_summary.items():
+            st.markdown(f"**🗂️ {doc}**")
+            st.markdown(summ)
+            st.markdown("---")
+
+    # Chat & Q&A
+    st.subheader(t("Chat & Ask Questions", "チャット & 質問"))
+    prompt = st.chat_input(t("Type your question...", "質問を入力..."))
+    if prompt:
+        docs = "\n\n".join(st.session_state.document_content.values())
+        if not docs:
+            st.warning(t("Please add or capture a document first.", "先にドキュメントを追加または撮影してください。"))
+        else:
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            try:
+                ans = openai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a knowledgeable AI assistant."},
+                        {"role": "user", "content": f"{docs}\n\nQuestion: {prompt}"}
+                    ]
+                ).choices[0].message.content
+                st.session_state.chat_history.append({"role": "assistant", "content": ans})
+            except OpenAIError as e:
+                st.error(f"OpenAI API Error: {e}")
+
+    # Display chat history & feedback
+    for idx, msg in enumerate(st.session_state.chat_history):
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            if msg["role"] == "assistant":
+                c1, c2 = st.columns([1, 1])
+                if c1.button("👍", key=f"yes{idx}"):
+                    st.session_state.feedback_entries.append({"helpful": True, "timestamp": datetime.now().isoformat()})
+                if c2.button("👎", key=f"no{idx}"):
+                    st.session_state.feedback_entries.append({"helpful": False, "timestamp": datetime.now().isoformat()})
+
+    # Download Exec Report button after chat
+    st.markdown("---")
+    if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
+        docs = st.session_state.document_content
+        combined = "\n\n".join([f"Document: {name}\n{content}" for name, content in docs.items()])
+        summary_resp = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a top-tier consultant AI."},
+                {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
+            ]
+        )
+        exec_sum = summary_resp.choices[0].message.content
+        questions_resp = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Generate 5 smart questions per document."},
+                {"role": "user", "content": f"Documents:\n{combined}"}
+            ]
+        )
+        questions = questions_resp.choices[0].message.content
+
+        report_txt = """# Exec Summary & Smart Questions\n\n"""
+        report_txt += "## Executive Summary\n" + exec_sum + "\n\n"
+        report_txt += "## Smart Questions\n" + questions + "\n"
+
+        st.download_button(
+            t("Download Exec Report", "エグゼクティブレポートをダウンロード"),
+            data=report_txt,
+            file_name="Exec_Report.txt",
+            mime="text/plain"
+        )
+# --- END ---

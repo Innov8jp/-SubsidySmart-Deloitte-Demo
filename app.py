@@ -13,7 +13,7 @@ import textwrap
 # --- CONFIGURATION ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
-    page_icon=":moneybag:",
+    "page_icon='📊'",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -61,8 +61,8 @@ for key, val in defaults.items():
 col_main, _ = st.columns([3, 1])
 with col_main:
     st.title(t(
-        "DeloitteSmart™: AI Assistant for Smarter Services",
-        "DeloitteSmart™: M&Aとドキュメント解析のためのAIアシスタント"
+        "DeloitteSmart™: AI Assistant for Deloitte Team",
+        "DeloitteSmart™: デロイトチーム向けAIアシスタント"
     ))
 
     # Camera OCR
@@ -166,36 +166,39 @@ with col_main:
                 if c2.button("👎", key=f"no{idx}"):
                     st.session_state.feedback_entries.append({"helpful": False, "timestamp": datetime.now().isoformat()})
 
-    # Download Exec Report button after chat
-    st.markdown("---")
-    if st.button(t("Download Exec Report", "エグゼクティブレポートをダウンロード")):
-        docs = st.session_state.document_content
-        combined = "\n\n".join([f"Document: {name}\n{content}" for name, content in docs.items()])
-        summary_resp = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a top-tier consultant AI."},
-                {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
-            ]
-        )
-        exec_sum = summary_resp.choices[0].message.content
-        questions_resp = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Generate 5 smart questions per document."},
-                {"role": "user", "content": f"Documents:\n{combined}"}
-            ]
-        )
-        questions = questions_resp.choices[0].message.content
+   # --- Generate and Download Executive Report ---
+st.markdown("---")
+if st.button(t("📄 Generate Summary Report", "📄 サマリーレポートを作成")):
+    docs = st.session_state.document_content
+    combined = "\n\n".join([f"Document: {name}\n{content}" for name, content in docs.items()])
+    
+    summary_resp = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a top-tier consultant AI."},
+            {"role": "user", "content": f"Provide an executive summary:\n{combined}"}
+        ]
+    )
+    exec_sum = summary_resp.choices[0].message.content
 
-        report_txt = """# Exec Summary & Smart Questions\n\n"""
-        report_txt += "## Executive Summary\n" + exec_sum + "\n\n"
-        report_txt += "## Smart Questions\n" + questions + "\n"
+    questions_resp = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "Generate 5 smart questions per document."},
+            {"role": "user", "content": f"Documents:\n{combined}"}
+        ]
+    )
+    questions = questions_resp.choices[0].message.content
 
-        st.download_button(
-            t("Download Exec Report", "エグゼクティブレポートをダウンロード"),
-            data=report_txt,
-            file_name="Exec_Report.txt",
-            mime="text/plain"
-        )
+    report_txt = """# Executive Summary & Smart Questions\n\n"""
+    report_txt += "## Executive Summary\n" + exec_sum + "\n\n"
+    report_txt += "## Smart Questions\n" + questions + "\n"
+
+    st.success("✅ Report is ready. Click below to download.")
+    st.download_button(
+        label=t("📥 Download Summary Report", "📥 サマリーレポートをダウンロード"),
+        data=report_txt,
+        file_name="DeloitteSmart_Summary.txt",
+        mime="text/plain"
+    )
 # --- END ---

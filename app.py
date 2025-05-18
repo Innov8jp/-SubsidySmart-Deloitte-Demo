@@ -10,10 +10,9 @@ from PIL import Image
 from fpdf import FPDF
 import textwrap
 
-# --- CONFIGURATION ---
 st.set_page_config(
     page_title="DeloitteSmart™ - AI Assistant",
-    "page_icon='📊'",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )

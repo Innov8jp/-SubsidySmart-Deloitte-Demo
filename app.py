@@ -90,6 +90,7 @@ with col_main:
         except Exception as e:
             st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
 
+
         with tab2:
             file_img = st.file_uploader(t("Upload image file", "画像ファイルをアップロード"), type=["png", "jpg", "jpeg"])
             if file_img and st.button(t("Extract Text from Uploaded Image", "アップロード画像からテキストを抽出"), key="extract_upload"):

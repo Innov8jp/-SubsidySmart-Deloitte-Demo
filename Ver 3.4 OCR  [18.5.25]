@@ -34,7 +34,7 @@ def t(en: str, jp: str) -> str:
     return en if st.session_state.language == "English" else jp
 
 # --- SIDEBAR ANALYTICS ---
-st.sidebar.image("deloitte_logo.png", width=200)
+st.sidebar.image("Deloitte Logo (1).png", width=100)
 st.sidebar.markdown("**Powered by Innov8**")
 st.sidebar.markdown("Version 1.0 | Secure & Scalable")
 st.sidebar.markdown("---")

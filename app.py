@@ -72,7 +72,7 @@ with col_main:
         tab1, tab2 = st.tabs([t("Live Capture", "ライブ撮影"), t("Upload Image", "画像をアップロード")])
 
         with tab1:
-            cam_img = st.camera_input(t("Capture via camera", "カメラで撮影"), use_container_width=True)
+            cam_img = st.camera_input(t("Capture via camera", "カメラで撮影"))
             if cam_img and st.button(t("Extract Text from Camera", "カメラからテキストを抽出"), key="extract_cam"):
                 try:
                     cam_bytes = cam_img.getvalue()

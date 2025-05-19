@@ -69,8 +69,7 @@ with col_main:
     if enable_cam:
         st.subheader(t("Document Capture & OCR", "ドキュメント撮影 & OCR"))
         tab1, tab2 = st.tabs([t("Live Capture", "ライブ撮影"), t("Upload Image", "画像をアップロード")])
-
-        with tab1:
+with tab1:
     cam_img = st.camera_input(t("Capture via camera", "カメラで撮影"))
     if cam_img:
         st.image(cam_img, caption=t("Captured Image", "撮影された画像"), use_column_width=True)
@@ -89,7 +88,6 @@ with col_main:
             st.text_area("", cam_text, height=200)
         except Exception as e:
             st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
-
 
         with tab2:
             file_img = st.file_uploader(t("Upload image file", "画像ファイルをアップロード"), type=["png", "jpg", "jpeg"])

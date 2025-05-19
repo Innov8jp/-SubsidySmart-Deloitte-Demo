@@ -71,19 +71,29 @@ with col_main:
         tab1, tab2 = st.tabs([t("Live Capture", "ライブ撮影"), t("Upload Image", "画像をアップロード")])
 
         with tab1:
-            cam_img = st.camera_input(t("Capture via camera", "カメラで撮影"))
-            if cam_img and st.button(t("Extract Text from Camera", "カメラからテキストを抽出"), key="extract_cam"):
-                try:
-                    import pytesseract
-                    from PIL import Image as PilImage
-                    cam_bytes = cam_img.getvalue()
-                    cam_pil = PilImage.open(BytesIO(cam_bytes))
-                    cam_text = pytesseract.image_to_string(cam_pil)
-                    st.session_state.document_content["Camera Image"] = cam_text
-                    st.subheader(t("📝 Extracted Text from Camera", "📝 カメラ画像からの抽出テキスト"))
-                    st.text_area("", cam_text, height=200)
-                except Exception as e:
-                    st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
+    cam_img = st.camera_input(t("Capture via camera", "カメラで撮影"))
+    if cam_img and st.button(t("Extract Text from Camera", "カメラからテキストを抽出"), key="extract_cam"):
+        try:
+            import pytesseract
+            import cv2
+            import numpy as np
+            from PIL import Image as PilImage
+
+            cam_bytes = cam_img.getvalue()
+            cam_pil = PilImage.open(BytesIO(cam_bytes)).convert("RGB")
+            cam_np = np.array(cam_pil)
+            cam_gray = cv2.cvtColor(cam_np, cv2.COLOR_RGB2GRAY)
+            cam_clean = cv2.fastNlMeansDenoising(cam_gray, h=30)
+
+            cam_processed = PilImage.fromarray(cam_clean)
+            cam_text = pytesseract.image_to_string(cam_processed, lang='jpn+eng')
+
+            st.session_state.document_content["Camera Image"] = cam_text
+            st.subheader(t("📝 Extracted Text from Camera", "📝 カメラ画像からの抽出テキスト"))
+            st.text_area("", cam_text, height=200)
+        except Exception as e:
+            st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
+
 
         with tab2:
             file_img = st.file_uploader(t("Upload image file", "画像ファイルをアップロード"), type=["png", "jpg", "jpeg"])

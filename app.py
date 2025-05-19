@@ -69,25 +69,21 @@ with col_main:
     if enable_cam:
         st.subheader(t("Document Capture & OCR", "ドキュメント撮影 & OCR"))
         tab1, tab2 = st.tabs([t("Live Capture", "ライブ撮影"), t("Upload Image", "画像をアップロード")])
-with tab1:
-    cam_img = st.camera_input(t("Capture via camera", "カメラで撮影"))
-    if cam_img:
-        st.image(cam_img, caption=t("Captured Image", "撮影された画像"), use_column_width=True)
-        try:
-            import pytesseract
-            from PIL import Image as PilImage
-            cam_bytes = cam_img.getvalue()
-            cam_pil = PilImage.open(BytesIO(cam_bytes))
-            try:
-                cam_text = pytesseract.image_to_string(cam_pil, lang="jpn")
-            except pytesseract.TesseractError:
-                st.warning(t("Japanese OCR not available. Switching to English.", "日本語OCRは使用できません。英語に切り替えます。"))
-                cam_text = pytesseract.image_to_string(cam_pil, lang="eng")
-            st.session_state.document_content["Camera Image"] = cam_text
-            st.subheader(t("📝 Extracted Text from Camera", "📝 カメラ画像からの抽出テキスト"))
-            st.text_area("", cam_text, height=200)
-        except Exception as e:
-            st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
+
+        with tab1:
+            cam_img = st.camera_input(t("Capture via camera", "カメラで撮影"))
+            if cam_img and st.button(t("Extract Text from Camera", "カメラからテキストを抽出"), key="extract_cam"):
+                try:
+                    import pytesseract
+                    from PIL import Image as PilImage
+                    cam_bytes = cam_img.getvalue()
+                    cam_pil = PilImage.open(BytesIO(cam_bytes))
+                    cam_text = pytesseract.image_to_string(cam_pil)
+                    st.session_state.document_content["Camera Image"] = cam_text
+                    st.subheader(t("📝 Extracted Text from Camera", "📝 カメラ画像からの抽出テキスト"))
+                    st.text_area("", cam_text, height=200)
+                except Exception as e:
+                    st.error(t(f"OCR failed: {e}", f"OCRに失敗しました: {e}"))
 
         with tab2:
             file_img = st.file_uploader(t("Upload image file", "画像ファイルをアップロード"), type=["png", "jpg", "jpeg"])
